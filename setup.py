@@ -136,7 +136,10 @@ setup(name='GeoNode',
 
         # haystack/elasticsearch, uncomment to use
         "django-haystack==2.1.0",
-        "pyelasticsearch==0.6.1"
+        "pyelasticsearch==0.6.1",
+        
+        # CORS
+        "django-cors-headers==0.1.3"
         ],
       zip_safe=False,
       )
