@@ -24,11 +24,48 @@ from django.core.urlresolvers import reverse
 from django.utils import simplejson as json
 from django.db.models import Q
 from geonode.groups.models import GroupProfile
+# CORS-related
+from django.core.context_processors import csrf
+from django.views.decorators.csrf import csrf_protect, csrf_exempt
 
 
 class AjaxLoginForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput)
     username = forms.CharField()
+
+
+#Demonstrate CORS login and return of csrf token
+@csrf_exempt # have not yet worked out how to avoid this
+def cors_login(request):
+    if request.method != 'POST':
+        return HttpResponse(
+            content="ajax login requires HTTP POST",
+            status=405,
+            mimetype="text/plain"
+        )
+    form = AjaxLoginForm(data=request.POST)
+    if form.is_valid():
+        username = form.cleaned_data['username']
+        password = form.cleaned_data['password']
+        user = authenticate(username=username, password=password)
+        if user is None or not user.is_active:
+            return HttpResponse(
+                content="bad credentials or disabled user",
+                status=400,
+                mimetype="text/plain"
+            )
+        else:
+            login(request, user)
+            return HttpResponse(
+                content="%s" % csrf(request)['csrf_token'],
+                status=200,
+                mimetype="text/plain"
+            )
+    else:
+        return HttpResponse(
+            "The form you submitted doesn't look like a username/password combo.",
+            mimetype="text/plain",
+            status=400)
 
 
 def ajax_login(request):

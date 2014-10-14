@@ -39,3 +39,8 @@ OGC_SERVER = {
 
 # Default preview library
 #LAYER_PREVIEW_LIBRARY = 'geoext'
+
+# CORS settings
+CORS_ORIGIN_WHITELIST = (
+        'localhost:8080',
+    )

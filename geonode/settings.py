@@ -217,6 +217,9 @@ GEONODE_APPS = (
 
 INSTALLED_APPS = (
 
+    # CORS enablement
+    'corsheaders',
+
     # Boostrap admin theme
     # 'django_admin_bootstrapped.bootstrap3',
     # 'django_admin_bootstrapped',
@@ -335,6 +338,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 )
 
 MIDDLEWARE_CLASSES = (
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -716,6 +720,39 @@ CACHES = {
     #     'LOCATION': '/tmp/django_cache',
     #     }
 }
+
+# CORS settings
+CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_WHITELIST = (
+        'localhost:8080',
+    )
+CORS_ALLOW_METHODS = (
+        'GET',
+        'POST',
+        'PUT',
+        'PATCH',
+        'DELETE',
+        'OPTIONS',
+    )
+CORS_ALLOW_HEADERS = (
+        'x-requested-with',
+        'content-type',
+        'accept-encoding',
+        'origin',
+        'authorization',
+        'x-csrftoken',
+    )
+CORS_EXPOSE_HEADERS = (
+        'x-requested-with',
+        'content-type',
+        'accept-encoding',
+        'origin',
+        'authorization',
+        'x-csrftoken',
+)
+CORS_PREFLIGHT_MAX_AGE = 86400
+CORS_ALLOW_CREDENTIALS = True
+
 
 # Load more settings from a file called local_settings.py if it exists
 try:

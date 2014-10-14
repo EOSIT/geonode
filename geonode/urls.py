@@ -97,6 +97,10 @@ urlpatterns = patterns('',
                            'geonode.security.views.resource_permissions',
                            name='resource_permissions'),
 
+                       # CORS views
+                       url(r'^account/cors_login$', 'geonode.views.cors_login',
+                           name='cors_login'),
+
                        # Meta
                        url(r'^lang\.js$',
                            TemplateView.as_view(template_name='lang.js',
