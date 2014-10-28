@@ -30,12 +30,27 @@ from owslib.wms import WebMapService
 from owslib.wfs import WebFeatureService
 
 
-@login_required
+def ajax_login_required(f):
+    """Validate that user is authenticated; otherwise return a JSON error."""
+    def wrap(request, *args, **kwargs):
+        if not request.user.is_authenticated():
+            out = {'error': 'Not logged in.'}
+            return HttpResponse(
+                json.dumps(out),
+                mimetype='application/json',
+                status=400)
+        return f(request, *args, **kwargs)
+    wrap.__doc__=f.__doc__
+    wrap.__name__=f.__name__
+    return wrap
+
+
+@ajax_login_required
 def wms_layer_metadata(request, data_format='json', keyword=None):
-    """Return formatted metadata for the WMS data for a layer(s) for a
-    previously authenticated user.
+    """Return formatted metadata for a WMS layer(s) for a previously 
+    authenticated user.
     
-    A keyword is used to filter the required layer(s)
+    A keyword is used to filter for the required layer(s)
     """
     KEYWORD = keyword or settings.KEYWORD_WMS or 'displacement_map'
     VERSION_WMS = '1.1.1'  # owslib does not handle 1.3.0
@@ -109,12 +124,12 @@ def wms_layer_metadata(request, data_format='json', keyword=None):
                 status=400)
 
     
-@login_required
+@ajax_login_required
 def wfs_layer_metadata(request, data_format='json', keyword=None)):
-    """Return JSON-formatted metadata for the WFS data for a layer(s) for a
-    previously authenticated user.
+    """Return JSON-formatted metadata for a WFS layer(s) for a previously
+    authenticated user.
     
-    A keyword is used to filter the required layer(s)
+    A keyword is used to filter for the required layer(s)
     """
     KEYWORD = keyword or settings.KEYWORD_WMS or 'displacement_features'
     VERSION_WFS = '1.0.0'
