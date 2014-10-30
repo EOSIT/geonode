@@ -1,16 +1,41 @@
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
+from django.conf import settings
 from django.http import Http404, HttpResponseForbidden, HttpResponseRedirect, HttpResponseNotAllowed
 from django.shortcuts import render_to_response, get_object_or_404, redirect
 from django.template import RequestContext
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
-from django.views.generic import ListView
+from django.views.generic import ListView, TemplateView
 
 from actstream.models import Action
 
 from geonode.groups.forms import GroupInviteForm, GroupForm, GroupUpdateForm, GroupMemberForm
 from geonode.groups.models import GroupProfile, GroupInvitation, GroupMember
+
+
+def group_access(request, group):
+    if settings.LOCKDOWN_GROUP_PROFILE:
+        if not group.user_is_member(request.user) and not request.user.is_staff:
+            return False
+    return True      
+
+
+class GroupListView(ListView):
+    """
+    Returns list of groups.
+    """
+
+    model = GroupProfile
+    template_name = "groups/group_list.html"
+
+    def get_queryset(self):
+        if settings.LOCKDOWN_GROUP_PROFILE:
+            if self.request.user.is_staff:
+                return GroupProfile.objects.all()
+            else:
+                return GroupProfile.groups_for_user(self.request.user)  # GroupProfile.objects.none()
+        return GroupProfile.objects.all()
 
 
 @login_required
@@ -109,12 +134,13 @@ def group_members(request, slug):
     if group.user_is_role(request.user, "manager"):
         ctx["member_form"] = GroupMemberForm()
 
-    ctx.update({
-        "object": group,
-        "members": group.member_queryset(),
-        "is_member": group.user_is_member(request.user),
-        "is_manager": group.user_is_role(request.user, "manager"),
-    })
+    if group_access(request, group):
+        ctx.update({
+            "object": group,
+            "members": group.member_queryset(),
+            "is_member": group.user_is_member(request.user),
+            "is_manager": group.user_is_role(request.user, "manager"),
+        })
     ctx = RequestContext(request, ctx)
     return render_to_response("groups/group_members.html", ctx)
 

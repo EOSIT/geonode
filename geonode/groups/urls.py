@@ -1,11 +1,12 @@
 from django.conf.urls import patterns, url
 from django.views.generic import TemplateView
 
-from .views import GroupDetailView, GroupActivityView
+from .views import GroupDetailView, GroupActivityView, GroupListView
 
 urlpatterns = patterns('geonode.groups.views',
                        url(r'^$',
-                           TemplateView.as_view(template_name='groups/group_list.html'),
+                           #TemplateView.as_view(template_name='groups/group_list.html'),
+                           GroupListView.as_view(),
                            name="group_list"),
                        url(r'^create/$',
                            'group_create',
