@@ -1,4 +1,173 @@
-geonode (2.4.0+alpha6) trusty; urgency=medium
+geonode (2.4.0+alpha17) trusty; urgency=high
+
+  [ Ian Schneider ]
+  * [29c726] safer,complete sync of emailaddress/profile, tests
+
+  [ giohappy ]
+  * [eef970] enable Edit styles menu item only if geoext is set as preview library
+
+  [ Simone Dalmasso ]
+  * [147bd5] remove the files on layer delete.
+
+  [ Julien Collaer ]
+  * [4a3fcc] tags
+
+  [ Simone Dalmasso ]
+  * [1dd85f] remove the ng directive in profile detail fixes #1744
+  * [c8d60b] fix flake8
+  * [5c1858] fix flake8
+  * [c4f571] avoid on load date query trigger
+  * [f96fad] bump angular to 1.3.0 and leaflet-directive to 0.7.9
+  * [8c13e9] prevent default event on bulk perms form
+
+  [ Raphael Sprumont ]
+  * [9f4521] correction issue 1743 Geonode
+
+  [ Simone Dalmasso ]
+  * [8ca828] fix service url reverse
+
+ -- Simone Dalmasso <simone.dalmasso@gmail.com>  Wed, 29 Oct 2014 14:54:26 +0000
+
+geonode (2.4.0+alpha16) trusty; urgency=high
+
+  [ x ]
+  * UNRELEASED
+
+  [ Ariel Nunez ]
+
+ -- Ariel Nunez <ingenieroariel@gmail.com>  Fri, 24 Oct 2014 11:40:11 -0500
+
+geonode (2.4.0+alpha15) trusty; urgency=high
+
+  * [e4f9cd] Bumped django-user-account
+  * [570894] geonode-user-accounts is now version 1.0.5
+  * [620997] Replace urgency correctly
+
+ -- Ariel Nunez <ingenieroariel@gmail.com>  Fri, 24 Oct 2014 11:35:33 -0500
+
+geonode (2.4.0+alpha14) trusty; urgency=high
+
+  [ Simone Dalmasso ]
+  * [7de1b9] remove the navbar-form class from  search form
+
+  [ Julien Collaer ]
+  * [7ba57e] adding translations items
+  * [8e5c04] using interpolate syntax for incrusting var into translables texts
+
+  [ Ariel Nunez ]
+
+ -- Ariel Nunez <ingenieroariel@gmail.com>  Fri, 24 Oct 2014 10:15:18 -0500
+
+geonode (2.4.0+alpha13) trusty; urgency=high
+
+  * [9e4552] Fixed missing dash in pip install
+
+ -- Ariel Nunez <ingenieroariel@gmail.com>  Wed, 22 Oct 2014 23:35:11 -0500
+
+geonode (2.4.0+alpha12) trusty; urgency=high
+
+  * [e2d977] Decrease verbosity level in installer
+  * [02217c] Removed unused popd
+
+ -- Ariel Nunez <ingenieroariel@gmail.com>  Wed, 22 Oct 2014 23:08:05 -0500
+
+geonode (2.4.0+alpha11) trusty; urgency=high
+
+  * [08f7dd] Fixed recursive .git symlink
+  * [9451d4] Move to postgis2 on Ubuntu 14.04
+
+ -- Ariel Nunez <ingenieroariel@gmail.com>  Wed, 22 Oct 2014 22:30:07 -0500
+
+geonode (2.4.0+alpha10) trusty; urgency=high
+
+  [ x ]
+  * UNRELEASED
+
+  [ Ariel Nunez ]
+
+ -- Ariel Nunez <ingenieroariel@gmail.com>  Wed, 22 Oct 2014 22:05:10 -0500
+
+geonode (2.4.0+alpha9) trusty; urgency=high
+
+  [ Ian Schneider ]
+  * [608fe9] fix order of arguments to metadata_links
+  * [2931e6] some navbar tweaks for small devices
+
+  [ Julien Collaer ]
+  * [b618b2] adding fr translations
+
+  [ Ariel Núñez ]
+  * [f20ec7] Update setup.py
+
+  [ cristinao ]
+  * [cae3b8] Update tour.txt
+
+  [ Ariel Núñez ]
+  * [454a1c] Added Cristina Ospino to AUTHORS
+  * [1c9052] Added Patrick and Derek to the PRIMARY AUTHORS
+  * [7bebbf] Don't enable the default site after removal
+
+  [ Ariel Nunez ]
+
+ -- Ariel Nunez <ingenieroariel@gmail.com>  Wed, 22 Oct 2014 21:55:45 -0500
+
+geonode (2.4.0+alpha8) trusty; urgency=high
+
+  * UNRELEASED
+
+ -- Simone Dalmasso <simone.dalmasso@gmail.com>  Tue, 21 Oct 2014 14:24:39 +0000
+
+geonode (2.4.0+alpha7) trusty; urgency=high
+
+  [ Simone Dalmasso ]
+  * [e43839] fix css for dropdow
+  * [c98091] set the map local geoserver url after the local_settings import
+
+  [ Ian Schneider ]
+  * [9d5b24] rename angular search components for clarity
+
+  [ Simone Dalmasso ]
+  * [ab5dc8] add bulk permissions for registered users
+  * [c3b4d7] use the valid layer name as file name on the disk
+  * [545cdf] fix the group member add, use join. Fixes #1717
+  * [8f4dae] don't trigger save twice in update layers, set correctly the bbox.
+  * [c66526] remove erroneous MAP_BASELAYERS definition in local_settings.
+
+  [ Ian Schneider ]
+  * [bf2e9a] remove container width breaking responsive layout
+
+  [ Simone Dalmasso ]
+  * [a4a11b] use bootstrap alerts to notify the bulk perms submit, and better resource select method
+  * [940a26] fix test
+
+  [ Julien Collaer ]
+  * [de8176] adding translation tags
+
+  [ Minpa Lee ]
+  * [2f0b85] added korean language support
+
+  [ Simone Dalmasso ]
+  * [daba02] remove unwanted ng-if in keywords list
+  * [319726] wrap profile items in a div
+
+  [ Ariel Núñez ]
+  * [6b9738] Update settings.py
+
+  [ Ariel Nunez ]
+  * [a87921] Updated locale files with makemessages and compilemessages
+  * [03b303] Another translations update
+  * [daa3eb] Added some target languages for the next release before contacting the translators
+  * [32edf2] Updated list of languages
+
+  [ Simone Dalmasso ]
+  * [580c9f] add back the ng-if in the right place in keywords
+  * [af884e] comment out the tl language for the moment, add myself to the travis mails
+  * [3b2eb9] fix comment, for pep8
+  * [de5ba2] add permissions filter to resources counts in profile list
+
+ -- Simone Dalmasso <simone.dalmasso@gmail.com>  Tue, 21 Oct 2014 14:19:29 +0000
+
+geonode (2.4.0+alpha6) trusty; urgency=high
 
   [ Matthew Hanson ]
   * [526dfe] fix remote services thumbnail creation
@@ -206,7 +375,7 @@ geonode (2.4.0+alpha6) trusty; urgency=medium
 
  -- Simone Dalmasso <simone.dalmasso@gmail.com>  Tue, 07 Oct 2014 14:40:24 +0000
 
-geonode (2.4.0+alpha5) trusty; urgency=medium
+geonode (2.4.0+alpha5) trusty; urgency=high
 
   [ Tyler Garner ]
   * [3181bf] GeoGit link logic only runs when the layer's store type is a dataStore.
@@ -230,13 +399,13 @@ geonode (2.4.0+alpha5) trusty; urgency=medium
 
  -- Simone Dalmasso <simone.dalmasso@gmail.com>  Mon, 28 Jul 2014 07:02:39 +0000
 
-geonode (2.4.0+alpha4) trusty; urgency=medium
+geonode (2.4.0+alpha4) trusty; urgency=high
 
   * [900e91] make flake8 happy and import Datasource in the method (install would break)
 
  -- Simone Dalmasso <simone.dalmasso@gmail.com>  Wed, 23 Jul 2014 10:08:42 +0000
 
-geonode (2.4.0+alpha3) trusty; urgency=medium
+geonode (2.4.0+alpha3) trusty; urgency=high
 
   [ Tyler Garner ]
   * [d03e07] Fix AttributeError in the ogc_server_settings configuration check.
@@ -250,13 +419,13 @@ geonode (2.4.0+alpha3) trusty; urgency=medium
 
  -- Simone Dalmasso <simone.dalmasso@gmail.com>  Wed, 23 Jul 2014 09:42:50 +0000
 
-geonode (2.4.0+alpha2) trusty; urgency=medium
+geonode (2.4.0+alpha2) trusty; urgency=high
 
   * [0960df] updates to support ubuntu 14.04
 
  -- Simone Dalmasso <simone.dalmasso@gmail.com>  Mon, 21 Jul 2014 09:39:06 +0000
 
-geonode (2.4.0+alpha1) trusty; urgency=medium
+geonode (2.4.0+alpha1) trusty; urgency=high
 
   [ mwengren ]
   * [13dc6c] Modified resource retrieval from gs_catalog in layers/models.py and added assumption that store exists within workspace in updatelayers to improve speed.
