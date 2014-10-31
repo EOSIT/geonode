@@ -26,7 +26,7 @@
      <dt><i class="fa fa-building"></i></dt>
      <dd>{{ profile.organization }}</dd>
      {% endif %}
-     {% if user.is_authenticated %}
+     {% if user.is_authenticated and not restricted %}
         {% if profile.location %}
         <dt><i class="fa fa-map-marker"></i></dt>
         <dd>{{ profile.location }}</dd>
@@ -92,7 +92,7 @@
   </div>
 </div>
 
-{% if user.is_authenticated %}
+{% if user.is_authenticated and not restricted %}
 
 <div class="col-md-8">
   <h3>Groups</h3>
