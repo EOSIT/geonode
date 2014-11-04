@@ -360,6 +360,15 @@ Default: ``False``
 By default, the GeoNode application allows visitors to view most pages without being authenticated. If this is set to ``True``
 users must be authenticated before accessing URL routes not included in ``AUTH_EXEMPT_URLS``.
 
+LOCKDOWN_GROUP_PROFILE
+----------------------
+Default: ``False``
+
+By default, the GeoNode application allows authenticated users to see profiles
+and groups of other users.   If this is set to ``True``, then normal users are 
+restricted to accessing only their own groups or own profile.  Staff users can
+still access all groups and profiles.  This setting also applies to the API.
+
 Social settings
 ===============
 

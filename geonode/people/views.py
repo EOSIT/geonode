@@ -66,7 +66,7 @@ def profile_edit(request, username=None):
 def profile_detail(request, username):
     if settings.LOCKDOWN_GROUP_PROFILE:
         if not request.user == username and not request.user.is_staff:
-            return HttpResponse('Unauthorized', status=401)
+            return redirect("profile_browse")
     profile = get_object_or_404(Profile, username=username)
     # combined queryset from each model content type
 

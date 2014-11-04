@@ -605,6 +605,9 @@ SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
 # Require users to authenticate before using Geonode
 LOCKDOWN_GEONODE = False
 
+# Restrict users to their own groups and profile
+LOCKDOWN_GROUP_PROFILE = False
+
 # Add additional paths (as regular expressions) that don't require
 # authentication.
 AUTH_EXEMPT_URLS = ()
