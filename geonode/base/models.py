@@ -26,7 +26,6 @@ from geonode.utils import forward_mercator
 from geonode.security.models import PermissionLevelMixin
 from taggit.managers import TaggableManager
 
-from geonode.people.models import Profile
 from geonode.people.enumerations import ROLE_VALUES
 
 logger = logging.getLogger(__name__)
@@ -211,9 +210,7 @@ class ResourceBaseManager(PolymorphicManager):
         if superusers.count() == 0:
             raise RuntimeError('GeoNode needs at least one admin/superuser set')
 
-        contact = Profile.objects.get_or_create(user=superusers[0],
-                                                defaults={"name": "Geonode Admin"})[0]
-        return contact
+        return superusers[0]
 
     def get_queryset(self):
         return super(ResourceBaseManager, self).get_queryset().non_polymorphic()
@@ -292,10 +289,10 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin):
                                                     help_text=spatial_representation_type_help_text)
 
     # Section 5
-    temporal_extent_start = models.DateField(_('temporal extent start'), blank=True, null=True,
-                                             help_text=temporal_extent_start_help_text)
-    temporal_extent_end = models.DateField(_('temporal extent end'), blank=True, null=True,
-                                           help_text=temporal_extent_end_help_text)
+    temporal_extent_start = models.DateTimeField(_('temporal extent start'), blank=True, null=True,
+                                                 help_text=temporal_extent_start_help_text)
+    temporal_extent_end = models.DateTimeField(_('temporal extent end'), blank=True, null=True,
+                                               help_text=temporal_extent_end_help_text)
 
     supplemental_information = models.TextField(_('supplemental information'), default=DEFAULT_SUPPLEMENTAL_INFORMATION,
                                                 help_text=_('any other descriptive information about the dataset'))
@@ -347,9 +344,10 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin):
     share_count = models.IntegerField(default=0)
 
     featured = models.BooleanField(default=False, help_text=_('Should this resource be advertised in home page?'))
+    is_published = models.BooleanField(default=True, help_text=_('Should this resource be published and searchable?'))
 
     # fields necessary for the apis
-    thumbnail_url = models.CharField(max_length=255, null=True, blank=True)
+    thumbnail_url = models.TextField(null=True, blank=True)
     detail_url = models.CharField(max_length=255, null=True, blank=True)
     rating = models.IntegerField(default=0, null=True)
 
@@ -613,9 +611,14 @@ class ResourceBase(PolymorphicModel, PermissionLevelMixin):
 
     class Meta:
         # custom permissions,
-        # change and delete are standard in django
-        permissions = (('view_resourcebase', 'Can view'),
-                       ('change_resourcebase_permissions', "Can change permissions"), )
+        # add, change and delete are standard in django-guardian
+        permissions = (
+            ('view_resourcebase', 'Can view resource'),
+            ('change_resourcebase_permissions', 'Can change resource permissions'),
+            ('download_resourcebase', 'Can download resource'),
+            ('publish_resourcebase', 'Can publish resource'),
+            ('change_resourcebase_metadata', 'Can change resource metadata'),
+        )
 
 
 class LinkManager(models.Manager):

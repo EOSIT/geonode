@@ -70,6 +70,11 @@ def facets(context):
         rasters = Layer.objects.filter(storeType='coverageStore').values_list('id', flat=True)
         remote = Layer.objects.filter(storeType='remoteStore').values_list('id', flat=True)
 
+        if settings.RESOURCE_PUBLISHING:
+            vectors = vectors.filter(is_published=True)
+            rasters = rasters.filter(is_published=True)
+            remote = remote.filter(is_published=True)
+
         if settings.SKIP_PERMS_FILTER:
             facets['raster'] = rasters.count()
             facets['vector'] = vectors.count()

@@ -24,7 +24,6 @@ import shutil
 
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
-from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.conf import settings
@@ -43,11 +42,11 @@ from geonode.layers.models import Layer, Attribute
 from geonode.base.enumerations import CHARSETS
 from geonode.base.models import TopicCategory
 
-from geonode.utils import default_map_config, llbbox_to_mercator
+from geonode.utils import default_map_config
 from geonode.utils import GXPLayer
 from geonode.utils import GXPMap
 from geonode.layers.utils import file_upload
-from geonode.utils import resolve_object
+from geonode.utils import resolve_object, llbbox_to_mercator
 from geonode.people.forms import ProfileForm, PocForm
 from geonode.security.views import _perms_info_json
 from geonode.documents.models import get_related_documents
@@ -76,11 +75,11 @@ def _resolve_layer(request, typename, permission='base.view_resourcebase',
     service_typename = typename.split(":", 1)
     service = Service.objects.filter(name=service_typename[0])
 
-    if service.count() > 0 and service[0].method != "C":
+    if service.count() > 0:
         return resolve_object(request,
                               Layer,
                               {'service': service[0],
-                               'typename': service_typename[1]},
+                               'typename': service_typename[1] if service[0].method != "C" else typename},
                               permission=permission,
                               permission_msg=msg,
                               **kwargs)
@@ -101,7 +100,8 @@ def _resolve_layer(request, typename, permission='base.view_resourcebase',
 def layer_upload(request, template='upload/layer_upload.html'):
     if request.method == 'GET':
         ctx = {
-            'charsets': CHARSETS
+            'charsets': CHARSETS,
+            'is_layer': True,
         }
         return render_to_response(template,
                                   RequestContext(request, ctx))
@@ -175,22 +175,24 @@ def layer_upload(request, template='upload/layer_upload.html'):
 
 
 def layer_detail(request, layername, template='layers/layer_detail.html'):
-
     layer = _resolve_layer(
         request,
         layername,
         'base.view_resourcebase',
         _PERMISSION_MSG_VIEW)
-    layer_bbox = layer.bbox
     # assert False, str(layer_bbox)
-    bbox = list(layer_bbox[0:4])
     config = layer.attribute_config()
 
     # Add required parameters for GXP lazy-loading
-    config["srs"] = layer.srid
+    layer_bbox = layer.bbox
+    bbox = [float(coord) for coord in list(layer_bbox[0:4])]
+    srid = layer.srid
+
+    # Transform WGS84 to Mercator.
+    config["srs"] = srid if srid != "EPSG:4326" else "EPSG:900913"
+    config["bbox"] = llbbox_to_mercator([float(coord) for coord in bbox])
+
     config["title"] = layer.title
-    config["bbox"] = [float(coord) for coord in bbox] if layer.srid == "EPSG:4326" else llbbox_to_mercator(
-        [float(coord) for coord in bbox])
 
     if layer.storeType == "remoteStore":
         service = layer.service
@@ -227,6 +229,7 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         "permissions_json": _perms_info_json(layer),
         "documents": get_related_documents(layer),
         "metadata": metadata,
+        "is_layer": True,
     }
 
     context_dict["viewer"] = json.dumps(
@@ -236,14 +239,14 @@ def layer_detail(request, layername, template='layers/layer_detail.html'):
         'LAYER_PREVIEW_LIBRARY',
         'leaflet')
 
-    if layer.storeType == 'dataStore':
-        links = layer.link_set.download().filter(
-            name__in=settings.DOWNLOAD_FORMATS_VECTOR)
-    else:
-        links = layer.link_set.download().filter(
-            name__in=settings.DOWNLOAD_FORMATS_RASTER)
-
-    context_dict["links"] = links
+    if request.user.has_perm('download_resourcebase', layer.get_self_resource()):
+        if layer.storeType == 'dataStore':
+            links = layer.link_set.download().filter(
+                name__in=settings.DOWNLOAD_FORMATS_VECTOR)
+        else:
+            links = layer.link_set.download().filter(
+                name__in=settings.DOWNLOAD_FORMATS_RASTER)
+        context_dict["links"] = links
 
     return render_to_response(template, RequestContext(request, context_dict))
 
@@ -253,7 +256,7 @@ def layer_metadata(request, layername, template='layers/layer_metadata.html'):
     layer = _resolve_layer(
         request,
         layername,
-        'base.change_resourcebase',
+        'base.change_resourcebase_metadata',
         _PERMISSION_MSG_METADATA)
     layer_attribute_set = inlineformset_factory(
         Layer,
@@ -397,7 +400,8 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
         ctx = {
             'charsets': CHARSETS,
             'layer': layer,
-            'is_featuretype': layer.is_vector()
+            'is_featuretype': layer.is_vector(),
+            'is_layer': True,
         }
         return render_to_response(template,
                                   RequestContext(request, ctx))
@@ -448,22 +452,18 @@ def layer_replace(request, layername, template='layers/layer_replace.html'):
 
 @login_required
 def layer_remove(request, layername, template='layers/layer_remove.html'):
-    try:
-        layer = _resolve_layer(request, layername, 'base.delete_resourcebase',
-                               _PERMISSION_MSG_DELETE)
+    layer = _resolve_layer(
+        request,
+        layername,
+        'base.delete_resourcebase',
+        _PERMISSION_MSG_DELETE)
 
-        if (request.method == 'GET'):
-            return render_to_response(template, RequestContext(request, {
-                "layer": layer
-            }))
-        if (request.method == 'POST'):
-            layer.delete()
-            return HttpResponseRedirect(reverse("layer_browse"))
-        else:
-            return HttpResponse("Not allowed", status=403)
-    except PermissionDenied:
-        return HttpResponse(
-            'You are not allowed to delete this layer',
-            mimetype="text/plain",
-            status=401
-        )
+    if (request.method == 'GET'):
+        return render_to_response(template, RequestContext(request, {
+            "layer": layer
+        }))
+    if (request.method == 'POST'):
+        layer.delete()
+        return HttpResponseRedirect(reverse("layer_browse"))
+    else:
+        return HttpResponse("Not allowed", status=403)

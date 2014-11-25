@@ -1,22 +1,23 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
-#
+# 
 # Translators:
-# nwang <nwang@opengeo.org>, 2012
+# Andres Alfonso Lemon Gomez <lemon.andres@gmail.com>, 2014
+# Nathan Wang <nwang@opengeo.org>, 2012
+# Nathan Wang <nwang@opengeo.org>, 2012
 msgid ""
 msgstr ""
 "Project-Id-Version: GeoNode\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2014-10-24 10:00-0500\n"
-"PO-Revision-Date: 2013-09-05 02:20+0000\n"
-"Last-Translator: nwang <nwang@opengeo.org>\n"
-"Language-Team: Chinese (http://www.transifex.com/projects/p/geonode/language/"
-"zh/)\n"
-"Language: zh\n"
+"PO-Revision-Date: 2014-11-15 18:01+0000\n"
+"Last-Translator: Andres Alfonso Lemon Gomez <lemon.andres@gmail.com>\n"
+"Language-Team: Chinese (http://www.transifex.com/projects/p/geonode/language/zh/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: zh\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #: static/geonode/js/extjs/GeoNode.js:72
@@ -54,98 +55,95 @@ msgstr "谁能管理编辑此数据？"
 #: static/geonode/js/upload/FileType.js:33
 #, c-format
 msgid "Missing a %s file, which is required"
-msgstr ""
+msgstr "缺少 %s 文件，这是必需的"
 
 #: static/geonode/js/upload/FileTypes.js:7
 msgid "ESRI Shapefile"
-msgstr ""
+msgstr "ESRI shape文件"
 
 #: static/geonode/js/upload/FileTypes.js:13
 #: static/geonode/js/upload/FileTypes.js:19
 msgid "GeoTiff File"
-msgstr ""
+msgstr "支持GeoTiff文件"
 
 #: static/geonode/js/upload/FileTypes.js:26
 msgid "Comma Separated File"
-msgstr ""
+msgstr "用逗号分隔的文件"
 
 #: static/geonode/js/upload/FileTypes.js:32
 msgid "Google Earth KML"
-msgstr ""
+msgstr "谷歌地球KML"
 
 #: static/geonode/js/upload/FileTypes.js:38
 msgid "Zip Archives"
-msgstr ""
+msgstr "ZIP压缩文件"
 
 #: static/geonode/js/upload/LayerInfo.js:249
-#, fuzzy
 msgid "Layer Info"
-msgstr "图层"
+msgstr "层信息"
 
 #: static/geonode/js/upload/LayerInfo.js:250
 msgid "Edit Metadata"
-msgstr ""
+msgstr "修改元数据"
 
 #: static/geonode/js/upload/LayerInfo.js:251
 msgid "Manage Styles"
-msgstr ""
+msgstr "管理样式"
 
 #: static/geonode/js/upload/LayerInfo.js:253
 msgid "Your layer was successfully uploaded"
-msgstr ""
+msgstr "你的层已成功上传"
 
 #: static/geonode/js/upload/LayerInfo.js:282
 msgid "Performing Final GeoServer Config Step"
-msgstr ""
+msgstr "执行最后的GeoServer的配置步骤"
 
 #: static/geonode/js/upload/LayerInfo.js:297
 #: static/geonode/js/upload/LayerInfo.js:319
 msgid "You need to specify more information in order to complete your upload"
-msgstr ""
+msgstr "您需要在为了完成您指定上传的更多信息"
 
 #: static/geonode/js/upload/LayerInfo.js:311
 msgid "You need to specify more information in order to complete your upload."
-msgstr ""
+msgstr "您需要在为了完成您指定上传的更多信息。"
 
 #: static/geonode/js/upload/LayerInfo.js:311
 msgid "You can continue configuring your layer."
-msgstr ""
+msgstr "您可以继续配置层。"
 
 #: static/geonode/js/upload/LayerInfo.js:329
 #: static/geonode/js/upload/LayerInfo.js:414
-#, fuzzy
 msgid "Unexpected Error"
-msgstr "连接错误"
+msgstr "意外错误"
 
 #: static/geonode/js/upload/LayerInfo.js:345
 msgid "Performing GeoServer Config Step"
-msgstr ""
+msgstr "表演GeoServer的配置步骤"
 
 #: static/geonode/js/upload/LayerInfo.js:417
 msgid "No error message supplied"
-msgstr ""
+msgstr "没有错误消息提供"
 
 #: static/geonode/js/upload/LayerInfo.js:432
 msgid "Layer files uploaded, configuring in GeoServer"
-msgstr ""
+msgstr "图层文件上传，配置在GeoServer的"
 
 #: static/geonode/js/upload/LayerInfo.js:447
 msgid "Select or create a Geogit repository."
-msgstr ""
+msgstr "选择或创建一个Geogit存储库。"
 
 #: static/geonode/js/upload/LayerInfo.js:542
-#, fuzzy
 msgid "Remove"
-msgstr "删除图层"
+msgstr "删除"
 
 #: static/geonode/js/upload/upload.js:126
 #, c-format
 msgid "The file %s is an unsupported file type, please select another file."
-msgstr ""
+msgstr "文件 %s 是不支持的文件类型，请选择其他文件。"
 
 #: static/geonode/js/upload/upload.js:286
 msgid "You are uploading an incomplete set of files."
-msgstr ""
+msgstr "您上传不完整的文件集。"
 
 #: templates/lang.js:9 templates/lang.js.c:236
 msgid "Cancel"
@@ -332,9 +330,7 @@ msgstr "小"
 msgid ""
 "Error contacting server.\n"
 " Please check the url and try again."
-msgstr ""
-"连接服务时出错。\n"
-"请检查网址再重试。"
+msgstr "连接服务时出错。\n请检查网址再重试。"
 
 #: templates/lang.js:69
 msgid "Layer Properties"

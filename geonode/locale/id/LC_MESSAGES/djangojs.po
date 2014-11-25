@@ -1,150 +1,148 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
-#
+# 
 # Translators:
+# ingenieroariel <ingenieroariel@gmail.com>, 2014
+# Iwan Setiawan <iwan@agrisoft.co.id>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version: GeoNode\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2014-10-24 10:00-0500\n"
-"PO-Revision-Date: 2013-09-05 02:20+0000\n"
-"Last-Translator: geonode <geonode-transifex@opengeo.org>\n"
-"Language-Team: Indonesian (http://www.transifex.com/projects/p/geonode/"
-"language/id/)\n"
-"Language: id\n"
+"PO-Revision-Date: 2014-11-14 17:42+0000\n"
+"Last-Translator: ingenieroariel <ingenieroariel@gmail.com>\n"
+"Language-Team: Indonesian (http://www.transifex.com/projects/p/geonode/language/id/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: id\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #: static/geonode/js/extjs/GeoNode.js:72
 msgid "Add user..."
-msgstr ""
+msgstr "Tambah pengguna..."
 
 #: static/geonode/js/extjs/GeoNode.js:72
 msgid "Who can view and download this data?"
-msgstr ""
+msgstr "Siapa yang dapat mengunduh data?"
 
 #: static/geonode/js/extjs/GeoNode.js:72
 msgid "Anyone"
-msgstr ""
+msgstr "Semua pengguna"
 
 #: static/geonode/js/extjs/GeoNode.js:72
 msgid "Any registered user"
-msgstr ""
+msgstr "Pengguna yang terdaftar"
 
 #: static/geonode/js/extjs/GeoNode.js:72
 msgid "Only users who can edit"
-msgstr ""
+msgstr "Hanya pengguna yang dapat mengedit"
 
 #: static/geonode/js/extjs/GeoNode.js:72
 msgid "Who can edit this data?"
-msgstr ""
+msgstr "Siapa yang dapat mengedit data ini?"
 
 #: static/geonode/js/extjs/GeoNode.js:72
 msgid "Only the following users or groups:"
-msgstr ""
+msgstr "Hanya pengguna atau grup pengguna:"
 
 #: static/geonode/js/extjs/GeoNode.js:72
 msgid "Who can manage and edit this data?"
-msgstr ""
+msgstr "Siapa yang dapat mengelola dan mengedit data ini?"
 
 #: static/geonode/js/upload/FileType.js:33
 #, c-format
 msgid "Missing a %s file, which is required"
-msgstr ""
+msgstr "Hilang file %s, yang diperlukan"
 
 #: static/geonode/js/upload/FileTypes.js:7
 msgid "ESRI Shapefile"
-msgstr ""
+msgstr "ESRI Shapefile"
 
 #: static/geonode/js/upload/FileTypes.js:13
 #: static/geonode/js/upload/FileTypes.js:19
 msgid "GeoTiff File"
-msgstr ""
+msgstr "GeoTiff Berkas"
 
 #: static/geonode/js/upload/FileTypes.js:26
 msgid "Comma Separated File"
-msgstr ""
+msgstr "Koma Terpisah Berkas"
 
 #: static/geonode/js/upload/FileTypes.js:32
 msgid "Google Earth KML"
-msgstr ""
+msgstr "Google Earth KML"
 
 #: static/geonode/js/upload/FileTypes.js:38
 msgid "Zip Archives"
-msgstr ""
+msgstr "Arsip Zip"
 
 #: static/geonode/js/upload/LayerInfo.js:249
-#, fuzzy
 msgid "Layer Info"
-msgstr "Layer"
+msgstr "Lapisan Info"
 
 #: static/geonode/js/upload/LayerInfo.js:250
 msgid "Edit Metadata"
-msgstr ""
+msgstr "Ubah metadata"
 
 #: static/geonode/js/upload/LayerInfo.js:251
 msgid "Manage Styles"
-msgstr ""
+msgstr "Kelola Styles"
 
 #: static/geonode/js/upload/LayerInfo.js:253
 msgid "Your layer was successfully uploaded"
-msgstr ""
+msgstr "Lapisan kamu telah diunggah"
 
 #: static/geonode/js/upload/LayerInfo.js:282
 msgid "Performing Final GeoServer Config Step"
-msgstr ""
+msgstr "Pertunjukan Akhir GeoServer Config Langkah"
 
 #: static/geonode/js/upload/LayerInfo.js:297
 #: static/geonode/js/upload/LayerInfo.js:319
 msgid "You need to specify more information in order to complete your upload"
-msgstr ""
+msgstr "Anda perlu menentukan informasi lebih lanjut untuk menyelesaikan upload"
 
 #: static/geonode/js/upload/LayerInfo.js:311
 msgid "You need to specify more information in order to complete your upload."
-msgstr ""
+msgstr "Anda perlu menentukan informasi lebih lanjut untuk menyelesaikan upload Anda."
 
 #: static/geonode/js/upload/LayerInfo.js:311
 msgid "You can continue configuring your layer."
-msgstr ""
+msgstr "Anda dapat melanjutkan dengan mengkonfigurasi lapisan Anda."
 
 #: static/geonode/js/upload/LayerInfo.js:329
 #: static/geonode/js/upload/LayerInfo.js:414
-#, fuzzy
 msgid "Unexpected Error"
-msgstr "Koneksi tidak berhasil"
+msgstr "Kesalahan tak terduga"
 
 #: static/geonode/js/upload/LayerInfo.js:345
 msgid "Performing GeoServer Config Step"
-msgstr ""
+msgstr "Pertunjukan GeoServer Config Langkah"
 
 #: static/geonode/js/upload/LayerInfo.js:417
 msgid "No error message supplied"
-msgstr ""
+msgstr "Tidak ada pesan kesalahan yang disediakan"
 
 #: static/geonode/js/upload/LayerInfo.js:432
 msgid "Layer files uploaded, configuring in GeoServer"
-msgstr ""
+msgstr "File lapisan upload, mengkonfigurasi di GeoServer"
 
 #: static/geonode/js/upload/LayerInfo.js:447
 msgid "Select or create a Geogit repository."
-msgstr ""
+msgstr "Pilih atau membuat repositori Geogit."
 
 #: static/geonode/js/upload/LayerInfo.js:542
-#, fuzzy
 msgid "Remove"
-msgstr "Hapus Layer"
+msgstr "Hapus"
 
 #: static/geonode/js/upload/upload.js:126
 #, c-format
 msgid "The file %s is an unsupported file type, please select another file."
-msgstr ""
+msgstr "File %s adalah jenis file yang tidak didukung, silahkan pilih file lain."
 
 #: static/geonode/js/upload/upload.js:286
 msgid "You are uploading an incomplete set of files."
-msgstr ""
+msgstr "Anda meng-upload sebuah set lengkap dari file."
 
 #: templates/lang.js:9 templates/lang.js.c:236
 msgid "Cancel"
@@ -331,9 +329,7 @@ msgstr "Kecil"
 msgid ""
 "Error contacting server.\n"
 " Please check the url and try again."
-msgstr ""
-"Error pada saat berkomunikasi dengan server.\n"
-"Silahkan cek URL yang dimasukkan dan coba lagi."
+msgstr "Error pada saat berkomunikasi dengan server.\nSilahkan cek URL yang dimasukkan dan coba lagi."
 
 #: templates/lang.js:69
 msgid "Layer Properties"
@@ -433,9 +429,7 @@ msgstr "Tidak ada latar"
 msgid ""
 "Your map is ready to be published to the web!  Simply copy the following "
 "HTML to embed the map in your website:"
-msgstr ""
-"Peta anda sudah siap untuk di publikasikan ke web! Untuk menyisipkan pada "
-"website silahkan salin kode HTML dibawah ini: "
+msgstr "Peta anda sudah siap untuk di publikasikan ke web! Untuk menyisipkan pada website silahkan salin kode HTML dibawah ini: "
 
 #: templates/lang.js:136 templates/lang.js.c:202
 msgid "Abstract:"

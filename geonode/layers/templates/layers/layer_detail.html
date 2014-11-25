@@ -22,7 +22,6 @@
 {% block body_class %}layers{% endblock %}
 
 {% block body_outer %}
-
 <div class="row">
   <div class="col-md-12">
     <h2 class="page-title">{{ resource.title|default:resource.typename }}</h2>
@@ -124,9 +123,17 @@
 
     <ul class="list-group">
       {% if resource.storeType != "remoteStore" %}
-      <li class="list-group-item">
-        <button class="btn btn-default btn-md btn-block" data-toggle="modal" data-target="#download-layer">{% trans "Download Layer" %}</button>
-      </li>
+        {% get_obj_perms request.user for resource.get_self_resource as "perms" %}
+        
+        <li class="list-group-item">
+        {% if links %}
+           <button class="btn btn-default btn-md btn-block" data-toggle="modal" data-target="#download-layer">{% trans "Download Layer" %}</button>
+        {% else %}
+          {% if request.user.is_authenticated %}
+          <button class="btn btn-default btn-md btn-block" id="request-download">{% trans "Request Download" %}</button>
+          {% endif %}
+        {% endif %}
+        </li>
       {% endif %}
     <div class="modal fade" id="download-layer" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
       <div class="modal-dialog">
@@ -136,11 +143,13 @@
             <h4 class="modal-title" id="myModalLabel">{% trans "Download Layer" %}</h4>
           </div>
           <div class="modal-body">
+            {% if links %}
             <ul>
               {% for link in links %}
               <li><a href="{{ link.url }}">{% trans link.name %}</a></li>
               {% endfor %}
-            <ul>
+            </ul>
+            {% endif %}
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">{% trans "Close" %}</button>
@@ -173,14 +182,13 @@
         </div>
       </div>
     </div>
-
-    <li class="list-group-item">
-    {% get_obj_perms request.user for resource.get_self_resource as "resource_perms" %}
-    {% if "change_resourcebase" in resource_perms %}
-    <button class="btn btn-default btn-md btn-block" data-toggle="modal" data-target="#edit-layer">{% trans "Edit Layer" %}</button>
-
-  </li>
-
+    {% if GEOSERVER_BASE_URL %}
+      {% get_obj_perms request.user for resource.layer as "layer_perms" %}
+    {% endif %}
+    {% if "change_resourcebase_metadata" in perms or "change_resourcebase" in perms or "delete_resourcebase" in perms or "change_layer_style" in layer_perms %}
+    <li class="list-group-item"> 
+      <button class="btn btn-default btn-md btn-block" data-toggle="modal" data-target="#edit-layer">{% trans "Edit Layer" %}</button>
+    </li>
     <div class="modal fade" id="edit-layer" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -190,15 +198,23 @@
           </div>
           <div class="modal-body">
             <ul>
-              <li><a href="{% url "layer_metadata" resource.service_typename %}">{% trans "Edit Metadata" %}</a></li>            
+              {% if "change_resourcebase_metadata" in perms %}
+              <li><a href="{% url "layer_metadata" resource.service_typename %}">{% trans "Edit Metadata" %}</a></li>  
+              {% endif %}             
               {% if GEOSERVER_BASE_URL %}
-              <li><a href="{% url "layer_style_manage" resource.service_typename %}">{% trans "Manage Styles" %}</a></li>
-              {% if preview == 'geoext' %}
-              <li><a class="style-edit" href="#">{% trans "Edit Styles" %}</a></li>
+                {% if "change_layer_style" in layer_perms %}
+                <li><a href="{% url "layer_style_manage" resource.service_typename %}">{% trans "Manage Styles" %}</a></li>
+                  {% if preview == 'geoext' %}
+                  <li><a class="style-edit" href="#">{% trans "Edit Styles" %}</a></li>
+                  {% endif %}
+                {% endif %}
               {% endif %}
+              {% if "change_resourcebase" in perms %}
+                <li><a href="{% url "layer_replace" resource.service_typename %}">{% trans "Replace this Layer" %}</a></li>
               {% endif %}
-              <li><a href="{% url "layer_replace" resource.service_typename %}">{% trans "Replace this Layer" %}</a></li>
-              <li><a href="{% url "layer_remove" resource.service_typename %}">{% trans "Remove this Layer" %}</a></li>
+              {% if "delete_resourcebase" in perms %}
+                <li><a href="{% url "layer_remove" resource.service_typename %}">{% trans "Remove this Layer" %}</a></li>
+              {% endif %}
             </ul>
           </div>
           <div class="modal-footer">
@@ -208,7 +224,6 @@
       </div>
     </div>
     {% endif %}
-
     {% if resource.get_legend %}
     <li class="list-group-item">
       <h4 class="list-group-item-heading">{%trans "Legend" %}</h4>
@@ -274,7 +289,7 @@
     {% endif %}
 
     {% if GEONODE_SECURITY_ENABLED %}
-    {% if "change_resourcebase_permissions" in resource_perms %}
+    {% if "change_resourcebase_permissions" in perms %}
     <li class="list-group-item">
       <h4>{% trans "Permissions" %}</h4>
       <p>{% trans "Click the button below to change the permissions of this layer." %}</p>
@@ -318,6 +333,7 @@
       {% overall_rating resource 'layer' as the_layer_rating %}
     {% endif %}
     {% include 'rating.html' %}
+    {% include 'request_download.html' %}
     <script type="text/javascript">
        $("#comment_submit_btn").click(function(event) {
             $.ajax({

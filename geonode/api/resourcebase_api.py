@@ -291,14 +291,17 @@ class CommonModelApi(ModelResource):
             filter_set = set(
                 get_objects_for_user(
                     request.user,
-                    'base.view_resourcebase').values_list(
-                    'id',
-                    flat=True))
+                    'base.view_resourcebase'
+                )
+            )
+            if settings.RESOURCE_PUBLISHING:
+                filter_set = filter_set.filter(is_published=True)
 
+            filter_set_ids = filter_set.values_list('id', flat=True)
             # Do the query using the filterset and the query term. Facet the
             # results
             if len(filter_set) > 0:
-                sqs = sqs.filter(oid__in=filter_set).facet('type').facet('subtype').facet('owner').facet('keywords')\
+                sqs = sqs.filter(oid__in=filter_set_ids).facet('type').facet('subtype').facet('owner').facet('keywords')\
                     .facet('category')
             else:
                 sqs = None
@@ -401,16 +404,17 @@ class CommonModelApi(ModelResource):
             'id',
             'uuid',
             'title',
+            'date',
             'abstract',
             'csw_wkt_geometry',
             'csw_type',
             'distribution_description',
             'distribution_url',
-            'owner_id',
+            'owner__username',
             'share_count',
             'popular_count',
             'srid',
-            'category',
+            'category__gn_description',
             'supplemental_information',
             'thumbnail_url',
             'detail_url',
@@ -426,6 +430,7 @@ class CommonModelApi(ModelResource):
 
         desired_format = self.determine_format(request)
         serialized = self.serialize(request, data, desired_format)
+
         return response_class(
             content=serialized,
             content_type=build_content_type(desired_format),
@@ -450,6 +455,8 @@ class ResourceBaseResource(CommonModelApi):
     class Meta(CommonMetaApi):
         queryset = ResourceBase.objects.polymorphic_queryset() \
             .distinct().order_by('-date')
+        if settings.RESOURCE_PUBLISHING:
+            queryset = queryset.filter(is_published=True)
         resource_name = 'base'
         excludes = ['csw_anytext', 'metadata_xml']
 
@@ -460,6 +467,8 @@ class FeaturedResourceBaseResource(CommonModelApi):
 
     class Meta(CommonMetaApi):
         queryset = ResourceBase.objects.filter(featured=True).order_by('-date')
+        if settings.RESOURCE_PUBLISHING:
+            queryset = queryset.filter(is_published=True)
         resource_name = 'featured'
 
 
@@ -469,6 +478,8 @@ class LayerResource(CommonModelApi):
 
     class Meta(CommonMetaApi):
         queryset = Layer.objects.distinct().order_by('-date')
+        if settings.RESOURCE_PUBLISHING:
+            queryset = queryset.filter(is_published=True)
         resource_name = 'layers'
         excludes = ['csw_anytext', 'metadata_xml']
 
@@ -479,6 +490,8 @@ class MapResource(CommonModelApi):
 
     class Meta(CommonMetaApi):
         queryset = Map.objects.distinct().order_by('-date')
+        if settings.RESOURCE_PUBLISHING:
+            queryset = queryset.filter(is_published=True)
         resource_name = 'maps'
 
 
@@ -490,4 +503,6 @@ class DocumentResource(CommonModelApi):
         filtering = CommonMetaApi.filtering
         filtering.update({'doc_type': ALL})
         queryset = Document.objects.distinct().order_by('-date')
+        if settings.RESOURCE_PUBLISHING:
+            queryset = queryset.filter(is_published=True)
         resource_name = 'documents'

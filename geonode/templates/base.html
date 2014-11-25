@@ -12,13 +12,14 @@
       <link href="{{ STATIC_URL }}lib/css/select2.css" rel="stylesheet"/>
       <link href="{{ STATIC_URL }}lib/css/bootstrap.min.css" rel="stylesheet"/>
       <link href="{{ STATIC_URL }}lib/css/jquery-ui.css" rel="stylesheet"/>
-      <link href="{{ STATIC_URL }}lib/css/datepicker.css" rel="stylesheet"/>
+      <link href="{{ STATIC_URL }}lib/css/bootstrap-datetimepicker.css" rel="stylesheet"/>
       {% else %}
-      <link href="{{ STATIC_URL }}lib/css/assets.min.css" rel="stylesheet"/> 
+      <link href="{{ STATIC_URL }}lib/css/assets.min.css" rel="stylesheet"/>
       {% endif %}
       <link href="{{ STATIC_URL }}geonode/css/ext-compatibility.css" rel="stylesheet" />
       <link href="{{ STATIC_URL }}geonode/css/base.css" rel="stylesheet" />
       {% block extra_head %}
+      <style type="text/css">[ng\:cloak],[ng-cloak],[data-ng-cloak],[x-ng-cloak],.ng-cloak,.x-ng-cloak,.ng-hide:not(.ng-hide-animate){display:none !important;}</style>
       {% endblock %}
     {% endblock %}
     <!--[if lt IE 9]>
@@ -92,6 +93,9 @@
                   <li><a href="{{ user.get_absolute_url }}"><i class="fa fa-user"></i> {% trans "Profile" %}</a></li>
                   <li><a href="{% url "recent-activity" %}"><i class="fa fa-fire"></i> {% trans "Recent Activity" %}</a></li>
                   <li><a href="{% url "messages_inbox" %}"><i class="fa fa-inbox"></i> {% trans "Inbox" %}</a></li>
+                  {% if USE_NOTIFICATIONS %}
+                    <li><a href="{% url "notification_notice_settings" %}"><i class="fa fa-bell"></i> {% trans "Notifications" %}</a></li>
+                  {% endif %}
                   {% if perms.announcements.can_manage %}
                   <li><a href="{% url "announcements_list" %}"><i class="fa fa-bullhorn"></i> {% trans "Announcements" %}</a></li>
                   {% endif %}
@@ -149,6 +153,7 @@
   <div id="wrap">
     {% block middle %}
     <div class="container">
+      {% include "_status_message.html" %}
       {% include "_announcements.html" %}
       {% block body_outer %}
       <div class="row">
@@ -173,13 +178,13 @@
             <a href="{% url "developer" %}">{% trans "Developers" %}</a> |
             <a href="{% url "about" %}">{% trans "About" %}</a>
           </div>
-          <div class="col-md-4 pull-right">
-            <label>{% trans "Language" %}</label>
+          <div class="col-md-4">
+            <label class="hidden">{% trans "Language" %}</label>
             {% if csrf_token != "NOTPROVIDED" %}
             {% get_current_language as LANGUAGE %}
             <form class="form-inline" action="/i18n/setlang/" method="post">
             {% csrf_token %}
-              <select name="language" onchange="javascript:form.submit()">
+              <select class="col-md-6 pull-right" name="language" onchange="javascript:form.submit()">
                 {% for lang in LANGUAGES %}
                 <option value="{{ lang.0 }}" {% ifequal LANGUAGE_CODE lang.0 %} selected="selected"{% endifequal %}>
                   {{ lang.1 }}
@@ -187,10 +192,10 @@
                 {% endfor %}
               </select>
             </form>
-          {% endif %}
-          </div> <!-- /.pull-right -->
+            {% endif %}
+          </div>
         </div>
-      </div> <!-- /.container -->
+      </div>
     </footer>
     {% endblock footer %}
     
@@ -212,7 +217,7 @@
     <script src="{{ STATIC_URL }}geonode/js/utils/utils.js"></script>
     <script src="{{ STATIC_URL }}geonode/js/base/base.js"></script>
     {% include 'autocomplete_light/static.html' %}
-
+    <script type="text/javascript" src="{% url 'django.views.i18n.javascript_catalog' %}"></script>
     {% block extra_script %}{% endblock extra_script %}
     <script type="text/javascript">
         var autocomplete = $('#search_input').yourlabsAutocomplete({
@@ -230,7 +235,6 @@
             }
         });
     </script>
-    <script type="text/javascript" src="{% url "django.views.i18n.javascript_catalog" %}"></script>
     <script type="text/javascript" src="{% url "lang" %}"></script>
 
   </body>

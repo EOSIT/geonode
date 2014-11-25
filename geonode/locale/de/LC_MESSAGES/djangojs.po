@@ -1,8 +1,9 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
-#
+# 
 # Translators:
+# Andres Alfonso Lemon Gomez <lemon.andres@gmail.com>, 2014
 # Hermann Schwarting <hfs@gmx.de>, 2012
 # Michael Diener office@gomogi.com, 2012
 msgid ""
@@ -10,14 +11,13 @@ msgstr ""
 "Project-Id-Version: GeoNode\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2014-10-24 10:00-0500\n"
-"PO-Revision-Date: 2013-09-05 02:20+0000\n"
-"Last-Translator: geonode <geonode-transifex@opengeo.org>\n"
-"Language-Team: German (http://www.transifex.com/projects/p/geonode/language/"
-"de/)\n"
-"Language: de\n"
+"PO-Revision-Date: 2014-11-14 23:30+0000\n"
+"Last-Translator: Andres Alfonso Lemon Gomez <lemon.andres@gmail.com>\n"
+"Language-Team: German (http://www.transifex.com/projects/p/geonode/language/de/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: static/geonode/js/extjs/GeoNode.js:72
@@ -55,98 +55,95 @@ msgstr "Wer darf diese Daten verwalten und bearbeiten?"
 #: static/geonode/js/upload/FileType.js:33
 #, c-format
 msgid "Missing a %s file, which is required"
-msgstr ""
+msgstr "Fehlt ein %s Datei, die erforderlich ist,"
 
 #: static/geonode/js/upload/FileTypes.js:7
 msgid "ESRI Shapefile"
-msgstr ""
+msgstr "ESRI Shapefile"
 
 #: static/geonode/js/upload/FileTypes.js:13
 #: static/geonode/js/upload/FileTypes.js:19
 msgid "GeoTiff File"
-msgstr ""
+msgstr "GeoTiff Datei"
 
 #: static/geonode/js/upload/FileTypes.js:26
 msgid "Comma Separated File"
-msgstr ""
+msgstr "Kommata getrennten Datei"
 
 #: static/geonode/js/upload/FileTypes.js:32
 msgid "Google Earth KML"
-msgstr ""
+msgstr "Google Earth KML"
 
 #: static/geonode/js/upload/FileTypes.js:38
 msgid "Zip Archives"
-msgstr ""
+msgstr "Zip-Archive"
 
 #: static/geonode/js/upload/LayerInfo.js:249
-#, fuzzy
 msgid "Layer Info"
-msgstr "Ebenen"
+msgstr "Schicht Info"
 
 #: static/geonode/js/upload/LayerInfo.js:250
 msgid "Edit Metadata"
-msgstr ""
+msgstr "Metadaten bearbeiten"
 
 #: static/geonode/js/upload/LayerInfo.js:251
 msgid "Manage Styles"
-msgstr ""
+msgstr "Stilverwaltung"
 
 #: static/geonode/js/upload/LayerInfo.js:253
 msgid "Your layer was successfully uploaded"
-msgstr ""
+msgstr "Ihre Schicht wurde erfolgreich hochgeladen"
 
 #: static/geonode/js/upload/LayerInfo.js:282
 msgid "Performing Final GeoServer Config Step"
-msgstr ""
+msgstr "Darstellende Schluss GeoServer Config Schritt"
 
 #: static/geonode/js/upload/LayerInfo.js:297
 #: static/geonode/js/upload/LayerInfo.js:319
 msgid "You need to specify more information in order to complete your upload"
-msgstr ""
+msgstr "Sie benötigen weitere Informationen, um Ihre Upload abzuschließen angeben"
 
 #: static/geonode/js/upload/LayerInfo.js:311
 msgid "You need to specify more information in order to complete your upload."
-msgstr ""
+msgstr "Sie benötigen weitere Informationen, um Ihre Upload abzuschließen angeben."
 
 #: static/geonode/js/upload/LayerInfo.js:311
 msgid "You can continue configuring your layer."
-msgstr ""
+msgstr "Sie können weiterhin die Konfiguration Ihres Schicht."
 
 #: static/geonode/js/upload/LayerInfo.js:329
 #: static/geonode/js/upload/LayerInfo.js:414
-#, fuzzy
 msgid "Unexpected Error"
-msgstr "Verbindungsfehler"
+msgstr "Unerwarteter Fehler"
 
 #: static/geonode/js/upload/LayerInfo.js:345
 msgid "Performing GeoServer Config Step"
-msgstr ""
+msgstr "Darstellende GeoServer Config Schritt"
 
 #: static/geonode/js/upload/LayerInfo.js:417
 msgid "No error message supplied"
-msgstr ""
+msgstr "Keine Fehlermeldung geliefert"
 
 #: static/geonode/js/upload/LayerInfo.js:432
 msgid "Layer files uploaded, configuring in GeoServer"
-msgstr ""
+msgstr "Layer-Dateien hochgeladen, die Konfiguration in GeoServer"
 
 #: static/geonode/js/upload/LayerInfo.js:447
 msgid "Select or create a Geogit repository."
-msgstr ""
+msgstr "Wählen oder erstellen Sie eine Geogit Repository."
 
 #: static/geonode/js/upload/LayerInfo.js:542
-#, fuzzy
 msgid "Remove"
-msgstr "Ebene entfernen"
+msgstr "Entfernen"
 
 #: static/geonode/js/upload/upload.js:126
 #, c-format
 msgid "The file %s is an unsupported file type, please select another file."
-msgstr ""
+msgstr "Die Datei %s ist ein nicht unterstütztes Dateityp, wählen Sie bitte eine andere Datei."
 
 #: static/geonode/js/upload/upload.js:286
 msgid "You are uploading an incomplete set of files."
-msgstr ""
+msgstr "Du Hochladen eines unvollständigen Satz von Dateien."
 
 #: templates/lang.js:9 templates/lang.js.c:236
 msgid "Cancel"
@@ -333,9 +330,7 @@ msgstr "Klein"
 msgid ""
 "Error contacting server.\n"
 " Please check the url and try again."
-msgstr ""
-"Fehler beim Verbinden mit Server.\n"
-"Bitte überprüfen Sie die URL und versuchen Sie es erneut."
+msgstr "Fehler beim Verbinden mit Server.\nBitte überprüfen Sie die URL und versuchen Sie es erneut."
 
 #: templates/lang.js:69
 msgid "Layer Properties"
@@ -361,9 +356,7 @@ msgstr "Wechseln Sie zu Google Earth 3D-Viewer"
 msgid ""
 "The map that you are trying to load does not exist.  Creating a new map "
 "instead."
-msgstr ""
-"Die Karte, die Sie versuchen zu laden, existiert nicht. Erstellen einer "
-"neuen Karte stattdessen."
+msgstr "Die Karte, die Sie versuchen zu laden, existiert nicht. Erstellen einer neuen Karte stattdessen."
 
 #: templates/lang.js:75
 msgid "Unknown Map"
@@ -437,9 +430,7 @@ msgstr "Kein Hintergrund"
 msgid ""
 "Your map is ready to be published to the web!  Simply copy the following "
 "HTML to embed the map in your website:"
-msgstr ""
-"Ihre Karte ist bereit, um im Internet veröffentlicht zu werden! Kopieren Sie "
-"einfach den folgenden HTML, um die Karte in Ihre Webseite einzubinden:"
+msgstr "Ihre Karte ist bereit, um im Internet veröffentlicht zu werden! Kopieren Sie einfach den folgenden HTML, um die Karte in Ihre Webseite einzubinden:"
 
 #: templates/lang.js:136 templates/lang.js.c:202
 msgid "Abstract:"

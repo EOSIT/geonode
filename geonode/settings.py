@@ -91,14 +91,51 @@ LANGUAGES = (
     ('ru', 'Russian'),
     ('vi', 'Vietnamese'),
     ('ko', '한국어'),
-    # ('tl', 'Tagalog'),
+    ('am', 'Amharic'),
+    ('km', 'Khmer'),
+    ('pl', 'Polish'),
+    ('sv', 'Swedish'),
+    ('th', 'Thai'),
+    ('uk', 'Ukranian'),
+    ('si', 'Sinhala'),
+    ('ta', 'Tamil'),
+    ('tl', 'Tagalog'),
 )
+
+EXTRA_LANG_INFO = {
+    'am': {
+        'bidi': False,
+        'code': 'am',
+        'name': 'Amharic',
+        'name_local': 'Amharic',
+        },
+    'tl': {
+        'bidi': False,
+        'code': 'tl',
+        'name': 'Tagalog',
+        'name_local': 'tagalog',
+        },
+    'ta': {
+        'bidi': False,
+        'code': 'ta',
+        'name': 'Tamil',
+        'name_local': u'tamil',
+        },
+    'si': {
+        'bidi': False,
+        'code': 'si',
+        'name': 'Sinhala',
+        'name_local': 'sinhala',
+        },
+}
 
 AUTH_USER_MODEL = 'people.Profile'
 
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.
 USE_I18N = True
+
+MODELTRANSLATION_LANGUAGES = ['en', ]
 
 MODELTRANSLATION_DEFAULT_LANGUAGE = 'en'
 
@@ -645,7 +682,7 @@ HAYSTACK_FACET_COUNTS = False
 
 # Available download formats
 DOWNLOAD_FORMATS_METADATA = [
-    'Atom', 'DIF', 'Dublin Core', 'ebRIM', 'FGDC', 'TC211',
+    'Atom', 'DIF', 'Dublin Core', 'ebRIM', 'FGDC', 'ISO',
 ]
 DOWNLOAD_FORMATS_VECTOR = [
     'JPEG', 'PDF', 'PNG', 'Zipped Shapefile', 'GML 2.0', 'GML 3.1.1', 'CSV',
@@ -670,6 +707,9 @@ TASTYPIE_DEFAULT_FORMATS = ['json']
 
 # gravatar settings
 AUTO_GENERATE_AVATAR_SIZES = (20, 32, 80, 100, 140, 200)
+
+# notification settings
+NOTIFICATION_LANGUAGE_MODULE = "account.Account"
 
 # Number of results per page listed in the GeoNode search pages
 CLIENT_RESULTS_LIMIT = 100
@@ -709,6 +749,9 @@ LEAFLET_CONFIG = {
     }
 }
 
+# option to enable/disable resource unpublishing for administrators
+RESOURCE_PUBLISHING = False
+
 CACHES = {
     # DUMMY CACHE FOR DEVELOPMENT
     'default': {
@@ -725,6 +768,9 @@ CACHES = {
     #     'LOCATION': '/tmp/django_cache',
     #     }
 }
+
+LAYER_PREVIEW_LIBRARY = 'geoext'
+
 
 # Load more settings from a file called local_settings.py if it exists
 try:

@@ -20,6 +20,9 @@
 import os
 import json
 import datetime
+import urllib2
+import base64
+import time
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -29,6 +32,7 @@ from django.test import LiveServerTestCase as TestCase
 from django.core.urlresolvers import reverse
 from django.contrib.staticfiles.templatetags import staticfiles
 from django.contrib.auth import get_user_model
+from guardian.shortcuts import assign_perm
 
 from geoserver.catalog import FailedRequestError, UploadError
 
@@ -40,9 +44,13 @@ from geonode.layers.utils import (
     upload,
     file_upload,
 )
-from .utils import check_layer, get_web_page
+from geonode.tests.utils import check_layer, get_web_page
 
 from geonode.geoserver.helpers import cascading_delete
+# FIXME(Ariel): Uncomment these when #1767 is fixed
+# from geonode.geoserver.helpers import get_time_info
+# from geonode.geoserver.helpers import get_wms
+# from geonode.geoserver.helpers import set_time_info
 from geonode.geoserver.signals import gs_catalog
 
 import gisdata
@@ -589,7 +597,188 @@ class GeoNodeMapTest(TestCase):
                                                'shx_file': layer_shx,
                                                'prj_file': layer_prj
                                                })
-        self.assertEquals(response.status_code, 302)
+        self.assertEquals(response.status_code, 401)
+
+
+class GeoNodePermissionsTest(TestCase):
+
+    """Tests GeoNode permissions and its integration with GeoServer
+    """
+
+    def setUp(self):
+        call_command('loaddata', 'people_data', verbosity=0)
+
+    def tearDown(self):
+        pass
+
+    def test_permissions(self):
+        """Test permissions on a layer
+        """
+
+        # grab norman
+        norman = get_user_model().objects.get(username="norman")
+
+        thefile = os.path.join(
+            gisdata.VECTOR_DATA,
+            'san_andres_y_providencia_poi.shp')
+        layer = file_upload(thefile, overwrite=True)
+        check_layer(layer)
+
+        # we need some time to have the service up and running
+        time.sleep(20)
+
+        # Set the layer private for not authenticated users
+        layer.set_permissions({'users': {'AnonymousUser': []}})
+
+        url = 'http://localhost:8080/geoserver/geonode/wms?' \
+            'LAYERS=geonode%3Asan_andres_y_providencia_poi&STYLES=' \
+            '&FORMAT=image%2Fpng&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap' \
+            '&SRS=EPSG%3A4326' \
+            '&BBOX=-81.394599749999,13.316009005566,' \
+            '-81.370560451855,13.372728455566' \
+            '&WIDTH=217&HEIGHT=512'
+
+        # test view_resourcebase permission on anonymous user
+        request = urllib2.Request(url)
+        response = urllib2.urlopen(request)
+        self.assertTrue(
+            response.info().getheader('Content-Type'),
+            'application/vnd.ogc.se_xml;charset=UTF-8'
+        )
+
+        # test WMS with authenticated user that has not view_resourcebase:
+        # the layer must be not accessible (response is xml)
+        request = urllib2.Request(url)
+        base64string = base64.encodestring(
+            '%s:%s' % ('norman', 'norman')).replace('\n', '')
+        request.add_header("Authorization", "Basic %s" % base64string)
+        response = urllib2.urlopen(request)
+        self.assertTrue(
+            response.info().getheader('Content-Type'),
+            'application/vnd.ogc.se_xml;charset=UTF-8'
+        )
+
+        # test WMS with authenticated user that has view_resourcebase: the layer
+        # must be accessible (response is image)
+        assign_perm('view_resourcebase', norman, layer.get_self_resource())
+        request = urllib2.Request(url)
+        base64string = base64.encodestring(
+            '%s:%s' % ('norman', 'norman')).replace('\n', '')
+        request.add_header("Authorization", "Basic %s" % base64string)
+        response = urllib2.urlopen(request)
+        self.assertTrue(response.info().getheader('Content-Type'), 'image/png')
+
+        # test change_layer_data
+        # would be nice to make a WFS/T request and test results, but this
+        # would work only on PostGIS layers
+
+        # Clean up and completely delete the layer
+        layer.delete()
+
+    def test_unpublished(self):
+        """Test permissions on an unpublished layer
+        """
+
+        thefile = os.path.join(
+            gisdata.VECTOR_DATA,
+            'san_andres_y_providencia_poi.shp')
+        layer = file_upload(thefile, overwrite=True)
+        check_layer(layer)
+
+        # we need some time to have the service up and running
+        time.sleep(20)
+
+        # request getCapabilities: layer must be there as it is published and
+        # advertised: we need to check if in response there is
+        # <Name>geonode:san_andres_y_providencia_water</Name>
+        url = 'http://localhost:8080/geoserver/ows?' \
+            'service=wms&version=1.3.0&request=GetCapabilities'
+        str_to_check = '<Name>geonode:san_andres_y_providencia_poi</Name>'
+        request = urllib2.Request(url)
+        response = urllib2.urlopen(request)
+        self.assertTrue(any(str_to_check in s for s in response.readlines()))
+
+        # by default the uploaded layer is
+        self.assertTrue(layer.is_published, True)
+
+        # Clean up and completely delete the layer
+        layer.delete()
+
+        # with settings disabled
+        with self.settings(RESOURCE_PUBLISHING=True):
+
+            thefile = os.path.join(
+                gisdata.VECTOR_DATA,
+                'san_andres_y_providencia_administrative.shp')
+            layer = file_upload(thefile, overwrite=True)
+            check_layer(layer)
+
+            # we need some time to have the service up and running
+            time.sleep(20)
+
+            str_to_check = '<Name>san_andres_y_providencia_administrative</Name>'
+
+            # by default the uploaded layer must be unpublished
+            self.assertEqual(layer.is_published, False)
+
+            # check the layer is not in GetCapabilities
+            request = urllib2.Request(url)
+            response = urllib2.urlopen(request)
+            self.assertFalse(any(str_to_check in s for s in response.readlines()))
+
+            # now test with published layer
+            resource = layer.get_self_resource()
+            resource.is_published = True
+            resource.save()
+
+            request = urllib2.Request(url)
+            response = urllib2.urlopen(request)
+            self.assertTrue(any(str_to_check in s for s in response.readlines()))
+
+            # Clean up and completely delete the layer
+            layer.delete()
+
+#    #FIXME(Ariel): Logged this as ticket  #1767
+#    def test_configure_time(self):
+#        # make sure it's not there (and configured)
+#        cascading_delete(gs_catalog, 'boxes_with_end_date')
+#
+#        def get_wms_timepositions():
+#            metadata = get_wms().contents['geonode:boxes_with_end_date']
+#            self.assertTrue(metadata is not None)
+#            return metadata.timepositions
+#
+#        thefile = os.path.join(
+#            gisdata.GOOD_DATA, 'time', 'boxes_with_end_date.shp'
+#        )
+#        uploaded = file_upload(thefile, overwrite=True)
+#        check_layer(uploaded)
+#        # initial state is no positions or info
+#        self.assertTrue(get_wms_timepositions() is None)
+#        self.assertTrue(get_time_info(uploaded) is None)
+#
+#        # enable using interval and single attribute
+#        set_time_info(uploaded, 'date', None, 'DISCRETE_INTERVAL', 3, 'days')
+#        self.assertEquals(
+#            ['2000-03-01T00:00:00.000Z/2000-06-08T00:00:00.000Z/P3D'],
+#            get_wms_timepositions()
+#        )
+#        self.assertEquals(
+#            {'end_attribute': None, 'presentation': 'DISCRETE_INTERVAL',
+#             'attribute': 'date', 'enabled': True, 'precision_value': '3',
+#             'precision_step': 'days'},
+#            get_time_info(uploaded)
+#        )
+#
+#        # disable but configure to use enddate attribute in list
+#        set_time_info(uploaded, 'date', 'enddate', 'LIST', None, None, enabled=False)
+#        # verify disabled
+#        self.assertTrue(get_wms_timepositions() is None)
+#        # test enabling now
+#        info = get_time_info(uploaded)
+#        info['enabled'] = True
+#        set_time_info(uploaded, **info)
+#        self.assertEquals(100, len(get_wms_timepositions()))
 
 
 class GeoNodeThumbnailTest(TestCase):

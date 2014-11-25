@@ -369,6 +369,16 @@ and groups of other users.   If this is set to ``True``, then normal users are
 restricted to accessing only their own groups or own profile.  Staff users can
 still access all groups and profiles.  This setting also applies to the API.
 
+RESOURCE_PUBLISHING
+-------------------
+Default: ``True``
+
+By default, the GeoNode application allows GeoNode staff members to 
+publish/unpublish resources.
+By default resources are published when created. When this settings is set to 
+True the staff members will be able to unpublish a resource (and eventually 
+publish it back).
+
 Social settings
 ===============
 
@@ -461,7 +471,7 @@ Specifies which metadata formats are available for users to download.
 Default::
 
     DOWNLOAD_FORMATS_METADATA = [
-        'Atom', 'DIF', 'Dublin Core', 'ebRIM', 'FGDC', 'TC211',
+        'Atom', 'DIF', 'Dublin Core', 'ebRIM', 'FGDC', 'ISO',
     ]
     
 DOWNLOAD_FORMATS_VECTOR
