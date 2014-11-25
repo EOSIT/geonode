@@ -127,6 +127,12 @@ if 'geonode.geoserver' in settings.INSTALLED_APPS:
                             (r'^gs/', include('geonode.geoserver.urls')),
                             )
 
+if "geonode.sos" in settings.INSTALLED_APPS:
+    urlpatterns += patterns('',
+                            (r'^sos/',
+                             include('geonode.sos.urls')),
+                            )
+
 # Set up proxy
 urlpatterns += geonode.proxy.urls.urlpatterns
 
