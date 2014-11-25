@@ -24,12 +24,12 @@ urlpatterns = patterns(
     'geonode.sos.views',
     # REST API for SOS data and metadata
     url(
-        r'^sos/metadata/$',
+        r'^(?P<layername>[^/]*)/metadata/$',
         'sos_layer_metadata',
         name='sos_layer_metadata'
     ),
     url(
-        r'^sos/data/$',
+        r'^(?P<layername>[^/]*)/data/$',
         'sos_layer_data',
         name='sos_layer_data'
     ),

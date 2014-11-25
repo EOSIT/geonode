@@ -76,10 +76,19 @@ def sos_layer_data(request, layername):
         feature = request.GET['feature']
     else:
         feature = None
+    if 'format' in request.GET:
+        data_format = request.GET['format']
+    else:
+        data_format = 'json'
+    if 'time' in request.GET:
+        time = request.GET['time']
+    else:
+        time = None
     keys = [lkw.name for lkw in layer.keywords.all()]
-    sup_inf_str = str(layer.supplemental_information) 
+    sup_info = str(layer.supplemental_information) 
     if "sos" in keys or "SOS" in keys:
-        return extract_sos_data(feature, sup_inf_str, format='json', time=None)
+        return extract_sos_data(feature, sup_info, 
+                                data_format=data_format, time=time)
     else:
         return HttpResponse(
             json.dumps(out),
@@ -109,9 +118,9 @@ def extract_sos_data(feature, supplementary_info, data_format='json', time=None)
     """
     import csv
     sup_info = eval(supplementary_info)
-    offerings = sup_info.get('offerings')
-    url = sup_info.get('sos_url')
-    observedProperties = sup_info.get('observedProperties')
+    offerings = sup_info.get('offerings', '')
+    url = sup_info.get('sos_url', '')
+    observedProperties = sup_info.get('observedProperties', '')
     time = time
     XML = sos_observation_xml(
         url, offerings=offerings, observedProperties=observedProperties, 
