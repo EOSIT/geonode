@@ -178,6 +178,15 @@ class GroupResource(ModelResource):
     def dehydrate_detail_url(self, bundle):
         return reverse('group_detail', args=[bundle.obj.slug])
 
+    def get_object_list(self, request):
+        if settings.LOCKDOWN_GROUP_PROFILE:
+            if request.user.is_staff:
+                return super(GroupResource, self).get_object_list(request)
+            else:
+                return super(GroupResource, self).get_object_list(request).\
+                    filter(groupmember__user=request.user)
+         return super(GroupResource, self).get_object_list(request)
+
     class Meta:
         queryset = GroupProfile.objects.all()
         resource_name = 'groups'
@@ -275,6 +284,15 @@ class ProfileResource(ModelResource):
             ]
         else:
             return []
+
+    def get_object_list(self, request):
+        if settings.LOCKDOWN_GROUP_PROFILE:
+            if request.user.is_staff:
+                return super(ProfileResource, self).get_object_list(request)
+            else:
+                return super(ProfileResource, self).get_object_list(request).\
+                    filter(username=request.user)
+
 
     class Meta:
         queryset = get_user_model().objects.exclude(username='AnonymousUser')

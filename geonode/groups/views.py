@@ -12,6 +12,32 @@ from actstream.models import Action
 from geonode.groups.forms import GroupInviteForm, GroupForm, GroupUpdateForm, GroupMemberForm
 from geonode.groups.models import GroupProfile, GroupInvitation, GroupMember
 
+import sys
+
+
+def group_access(request, group):
+    if settings.LOCKDOWN_GROUP_PROFILE:
+        if not group.user_is_member(request.user) and not request.user.is_staff:
+           return False
+    return True
+
+
+class GroupListView(ListView):
+    """
+    Returns list of groups.
+    """
+
+    model = GroupProfile
+    template_name = "groups/group_list.html"
+
+    def get_queryset(self):
+        if settings.LOCKDOWN_GROUP_PROFILE:
+            if self.request.user.is_staff:
+                return GroupProfile.objects.all()
+            else:
+                return GroupProfile.groups_for_user(self.request.user)
+        return GroupProfile.objects.all()
+
 
 @login_required
 def group_create(request):
@@ -77,6 +103,8 @@ class GroupDetailView(ListView):
 
     def get(self, request, *args, **kwargs):
         self.group = get_object_or_404(GroupProfile, slug=kwargs.get('slug'))
+        if not group_access(request, self.group):
+            raise Http404
         return super(GroupDetailView, self).get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -109,12 +137,14 @@ def group_members(request, slug):
     if group.user_is_role(request.user, "manager"):
         ctx["member_form"] = GroupMemberForm()
 
-    ctx.update({
-        "group": group,
-        "members": group.member_queryset(),
-        "is_member": group.user_is_member(request.user),
-        "is_manager": group.user_is_role(request.user, "manager"),
-    })
+    if group_access(request, group):
+        ctx.update({
+            "group": group,
+            "members": group.member_queryset(),
+            "is_member": group.user_is_member(request.user),
+            "is_manager": group.user_is_role(request.user, "manager"),
+        })
+
     ctx = RequestContext(request, ctx)
     return render_to_response("groups/group_members.html", ctx)
 

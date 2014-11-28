@@ -23,7 +23,7 @@
         <tbody>
         <tr>
             <td class="table-user-profile-attribute">{% trans 'Email' %}</td>
-            {% if profile.email %}
+            {% if profile.email and user.is_authenticated and not restricted %}
                 <td><a href="mailto:{{ profile.email }}">{{ profile.email }}</a></td>
             {% else %}
                 <td>{% trans 'Not provided.' %}</td>
@@ -41,7 +41,7 @@
             <td class="table-user-profile-attribute">{% trans 'Organization'  %}</td>
             <td>{{ profile.organization | default:_('Not provided.') }}</td>
           </tr>
-          {% if user.is_authenticated %}
+          {% if user.is_authenticated  and not restricted %}
           <tr>
             <td class="table-user-profile-attribute">{% trans 'Location' %}</td>
             <td>{{ profile.location | default:_('Not provided.') }}</td>
@@ -128,8 +128,7 @@
   </div>
 </div>
 
-{% if user.is_authenticated %}
-
+{% if user.is_authenticated and not restricted %}
 <div class="col-md-8">
   <h3>Groups</h3>
   {% if user == profile %}
@@ -166,7 +165,7 @@
          </div>
      </article>
     {% endfor %}
-  {% endif %} 
+  {% endif %}
 </div>
 {% endif %}
 
@@ -175,13 +174,13 @@
   <h3>{% trans "Resources" %}</h3>
   <div class="col-md-12">
   {% include "people/_profile_filters.html" %}
-  </div> 
+  </div>
   <div class="col-md-12">
   {% include "search/_sort_filters.html" %}
-  </div> 
+  </div>
   <div class="col-md-12">
     {% include 'search/_pagination.html' %}
-  </div> 
+  </div>
 </div>
 
   <div class="col-md-12">

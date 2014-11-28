@@ -39,6 +39,27 @@ urlpatterns = patterns(
     # url(r'^api/batch_permissions/?$', 'batch_permissions',
     #    name='batch_permssions'),
     # url(r'^api/batch_delete/?$', 'batch_delete', name='batch_delete'),
+    # REST API for displacement metadata
+    url(
+        r'^displacement/map/(?P<date_start>\w+|)/(?P<date_end>\w+|)/$',
+        'displacement_map_time',
+        name='displacement_map_time'
+    ),
+    url(
+        r'^displacement/map/$',
+        'displacement_map',
+        name='displacement_map'
+    ),
+    url(
+        r'^displacement/features/$',
+        'displacement_features',
+         name='displacement_features'
+    ),
+   url(
+        r'^user/summary/$',
+        'user_summary',
+        name='user_summary'
+    ),
 )
 
 # -- Deprecated url routes for Geoserver authentication -- remove after GeoNode 2.1
