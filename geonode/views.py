@@ -27,10 +27,59 @@ from django.template.response import TemplateResponse
 
 from geonode.groups.models import GroupProfile
 
-
+:28: # FOR CORS
+:29: from django.core.context_processors import csrf
+:30: from django.views.decorators.csrf import csrf_protect, csrf_exempt
+:31: from django.contrib.auth import logout
+:32: 
 class AjaxLoginForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput)
     username = forms.CharField()
+
+
+#TO TRY TO DEMOSNTRATE CORS LOGIN AND RETRUN OF CSRF TOKEN
+@csrf_exempt # have not yet worked out how to avoid this
+def cors_login(request):
+    if request.method != 'POST':
+        return HttpResponse(
+            content="ajax login requires HTTP POST",
+            status=200,
+            mimetype="text/plain"
+        )
+    form = AjaxLoginForm(data=request.POST)
+    if form.is_valid():
+        username = form.cleaned_data['username']
+        password = form.cleaned_data['password']
+        user = authenticate(username=username, password=password)
+        if user is None or not user.is_active:
+            return HttpResponse(
+                content="bad credentials or disabled user",
+                status=400,
+                mimetype="text/plain"
+            )
+        else:
+            login(request, user)
+            jsonObj = { 'username': user.username, 'firstName': user.first_name, 'lastName': user.last_name, 'organisation': 'Example Colliery' }
+            return HttpResponse(
+#                content="%s" % csrf(request)['csrf_token'],
+                content=json.dumps(jsonObj),
+                status=200,
+                mimetype="application/json"
+            )
+    else:
+        return HttpResponse(
+            "The form you submitted doesn't look like a username/password combo.",
+            mimetype="text/plain",
+            status=400)
+
+
+@csrf_exempt
+def cors_logout(request):
+    logout(request)
+    return HttpResponse(
+            json.dumps({'status': 'Logged out.'}),
+            mimetype="application/json",
+            status=200)
 
 
 def ajax_login(request):

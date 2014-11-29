@@ -82,7 +82,14 @@ urlpatterns = patterns('',
                        # Accounts
                        url(r'^account/ajax_login$', 'geonode.views.ajax_login', name='account_ajax_login'),
                        url(r'^account/ajax_lookup$', 'geonode.views.ajax_lookup', name='account_ajax_lookup'),
-
+                       url(r'^security/permissions/(?P<resource_id>\d+)$',
+                           'geonode.security.views.resource_permissions',
+                           name='resource_permissions'),
+		               # CORS url
+                       url(r'^account/cors_login/$', 'geonode.views.cors_login',
+                           name='cors_login'),
+                       url(r'^account/cors_logout/$', 'geonode.views.cors_logout',
+                           name='cors_logout'),
                        # Meta
                        url(r'^lang\.js$', TemplateView.as_view(template_name='lang.js', content_type='text/javascript'),
                            name='lang'),

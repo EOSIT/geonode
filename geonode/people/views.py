@@ -20,6 +20,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.shortcuts import render_to_response
 from django.core.urlresolvers import reverse
@@ -68,11 +69,15 @@ def profile_edit(request, username=None):
 
 
 def profile_detail(request, username):
+    if settings.LOCKDOWN_GROUP_PROFILE:
+        if not request.user == username and not request.user.is_staff:
+            return HttpResponse('Unauthorized', status=401)
     profile = get_object_or_404(Profile, username=username)
     # combined queryset from each model content type
 
     return render(request, "people/profile_detail.html", {
         "profile": profile,
+        "restricted": settings.LOCKDOWN_GROUP_PROFILE,
     })
 
 
