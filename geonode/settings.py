@@ -267,8 +267,7 @@ INSTALLED_APPS = (
     # 'django_admin_bootstrapped.bootstrap3',
     # 'django_admin_bootstrapped',
 
-    # TO ATTEMPT CORS ENABLEMENT
-    # not sure if this needs to go at top, but lets try
+    # CORS app
     'corsheaders',
     # Apps bundled with Django
     'django.contrib.auth',
@@ -383,9 +382,8 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'geonode.geoserver.context_processors.geoserver_urls',
 )
 
-# CORS ENABLEMENT ATTEMPT AT TOP
 MIDDLEWARE_CLASSES = (
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # CORS enablement at top
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
