@@ -185,7 +185,7 @@ class GroupResource(ModelResource):
             else:
                 return super(GroupResource, self).get_object_list(request).\
                     filter(groupmember__user=request.user)
-         return super(GroupResource, self).get_object_list(request)
+        return super(GroupResource, self).get_object_list(request)
 
     class Meta:
         queryset = GroupProfile.objects.all()
