@@ -27,11 +27,11 @@ from django.template.response import TemplateResponse
 
 from geonode.groups.models import GroupProfile
 
-:28: # FOR CORS
-:29: from django.core.context_processors import csrf
-:30: from django.views.decorators.csrf import csrf_protect, csrf_exempt
-:31: from django.contrib.auth import logout
-:32: 
+# FOR CORS
+from django.core.context_processors import csrf
+from django.views.decorators.csrf import csrf_protect, csrf_exempt
+from django.contrib.auth import logout
+ 
 class AjaxLoginForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput)
     username = forms.CharField()
