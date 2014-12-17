@@ -40,6 +40,16 @@ class AjaxLoginForm(forms.Form):
 #TO TRY TO DEMOSNTRATE CORS LOGIN AND RETRUN OF CSRF TOKEN
 @csrf_exempt # have not yet worked out how to avoid this
 def cors_login(request):
+    if request.method == 'GET':
+        from django.middleware.csrf import get_token
+        csrf_token = get_token(request)
+        # OR
+        # from django.core.context_processors import csrf
+        # csrf_token = csrf(request)
+        return HttpResponse(
+            content=csrf_token,
+            mimetype="text/plain",
+            status=200)
     if request.method != 'POST':
         return HttpResponse(
             content="ajax login requires HTTP POST",

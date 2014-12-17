@@ -60,6 +60,12 @@ urlpatterns = patterns(
         'user_summary',
         name='user_summary'
     ),
+    url(
+        r'^groups/add/$',
+        'create_group',
+        name='create_group'
+    ),
+
 )
 
 # -- Deprecated url routes for Geoserver authentication -- remove after GeoNode 2.1

@@ -112,8 +112,9 @@ def ajax_login_required(f):
     return wrap
 
 
-"""def get_crsf(request):
+def get_csrf(request):
     # https://docs.djangoproject.com/en/1.6/ref/contrib/csrf/#how-to-use-it
+    from django.middleware.csrf import get_token
     csrf_token = get_token(request)
     # OR
     # from django.core.context_processors import csrf
@@ -121,7 +122,52 @@ def ajax_login_required(f):
     return HttpResponse(
         json.dumps(csrf_token),
         mimetype='application/json',
-        status=200)"""
+        status=200)
+
+
+def create_group(request):
+    """Create a GeoNode Group from a JSON POST."""
+    from geonode.groups.models import GroupProfile
+    out = {}
+    if request.method == 'GET':
+        from django.middleware.csrf import get_token
+        csrf_token = get_token(request)
+        # OR
+        # from django.core.context_processors import csrf
+        # csrf_token = csrf(request)
+        return HttpResponse(
+            content=csrf_token,
+            mimetype="text/plain",
+            status=200)
+    elif request.method == 'POST':
+        if not request.user.is_authenticated():
+            out['error'] = 'Not logged in.'
+        else:
+            json_data = json.loads(request.body)
+            title = json_data.get('title')
+            description = json_data.get('description')
+            access = json_data.get('access')
+            #TODO - check that access is a 'legal' value (from GroupProfile)
+            if title and description and access:
+                # create group
+                try:
+                    group = GroupProfile()
+                    group.title = title
+                    group.description = description
+                    group.access = access
+                    group.clean()
+                    group.save()
+                    out['group_id'] = group.id 
+                except IntegrityError:
+                    out['error'] = 'That group already exists'
+            else:
+                out['error'] = 'Insufficient data to create group.'
+    else:
+        pass
+    return HttpResponse(
+        json.dumps(out),
+        mimetype='application/json',
+        status=400)
 
 
 def user_summary(request):
