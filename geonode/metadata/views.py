@@ -51,8 +51,21 @@ def wms_layer_metadata(request, data_format='json', keyword=None):
     authenticated user.
     
     A keyword is used to filter for the required layer(s)
+    
+    Results:
+        {"base_url": "http://server.co.za:1080/geoserver/wms/", 
+         "date_indices": [
+            "2014-09-21T00:00:00.000Z", "2014-10-15T00:00:00.000Z", 
+            "2014-11-08T00:00:00.000Z", "2014-12-02T00:00:00.000Z"], 
+         "layer_name": "test_displacement_wgs84"}
     """
-    KEYWORD = keyword or settings.KEYWORD_WMS or 'displacement_map'
+    if keyword:
+        WMS_KEYWORD = keyword
+    else:
+        try:
+            WMS_KEYWORD = settings.KEYWORD_WMS
+        except:
+            WMS_KEYWORD = '_displacement_'
     VERSION_WMS = '1.1.1'  # owslib does not handle 1.3.0
     LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
     out = {}
@@ -83,7 +96,7 @@ def wms_layer_metadata(request, data_format='json', keyword=None):
     wms = WebMapService('url', version=VERSION, xml=response_data)
     layers = [wms[layer].name for layer in wms.contents]
     for layer in layers:
-        if KEYWORD in wms[layer].keywords:
+        if WMS_KEYWORD in layer or WMS_KEYWORD in wms[layer].keywords:
             out['layer_name'] = layer
             try:
                 time_list = wms[layer].timepositions
@@ -130,8 +143,19 @@ def wfs_layer_metadata(request, data_format='json', keyword=None)):
     authenticated user.
     
     A keyword is used to filter for the required layer(s)
+    
+    Results:
+        {"date_field": "observed_date", 
+         "base_url": "http://server.co.za:1080/geoserver/wfs/", 
+         "layer_name": "deformation_features_test"}
     """
-    KEYWORD = keyword or settings.KEYWORD_WMS or 'displacement_features'
+     if keyword:
+        WFS_KEYWORD = keyword
+    else:
+        try:
+            WFS_KEYWORD = settings.KEYWORD_WFS
+        except:
+            WFS_KEYWORD = 'deformation_features'
     VERSION_WFS = '1.0.0'
     out = {}
     out['base_url'] = os.path.join(settings.SITEURL, 'geoserver/wfs/')
@@ -160,7 +184,7 @@ def wfs_layer_metadata(request, data_format='json', keyword=None)):
     for layer in wfs.contents:
         _keywords_list = wfs[layer].keywords[0].split(',')
         keywords_list = [key.strip() for key in _keywords_list]
-        if KEYWORD in keywords_list:
+        if WFS_KEYWORD in layer or WFS_KEYWORD in keywords_list:
             out['layer_name'] = layer
     # results
     if data_format == 'json':
