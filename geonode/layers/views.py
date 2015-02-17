@@ -148,6 +148,7 @@ def create_group(request):
         else:
             json_data = json.loads(request.body)
             title = json_data.get('title')
+            slug = json_data.get('slug')
             description = json_data.get('description')
             access = json_data.get('access')
             #TODO - check that access is a 'legal' value (from GroupProfile)
@@ -156,6 +157,10 @@ def create_group(request):
                 try:
                     group = GroupProfile()
                     group.title = title
+                    if slug:
+                        group.slug = slugify(slug)
+                    else:
+                        group.slug = slugify(title)
                     group.description = description
                     group.access = access
                     group.clean()

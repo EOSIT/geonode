@@ -179,6 +179,7 @@ class GroupResource(ModelResource):
         return reverse('group_detail', args=[bundle.obj.slug])
 
     def get_object_list(self, request):
+        print >>sys.stderr, "Group User", request.user, request.user.staff
         if settings.LOCKDOWN_GROUP_PROFILE:
             if request.user.is_staff:
                 return super(GroupResource, self).get_object_list(request)
