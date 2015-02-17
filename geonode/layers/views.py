@@ -35,6 +35,7 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.conf import settings
+from django.middleware.csrf import get_token
 from django.template import RequestContext
 from django.utils.translation import ugettext as _
 from django.utils import simplejson as json
@@ -97,7 +98,7 @@ def log_snippet(log_file):
 
 def ajax_login_required(f):
     def wrap(request, *args, **kwargs):
-        #if 'userid' not in request.session.keys()
+        #if 'userid' not in request.session.keys():
         if not request.user.is_authenticated():
             out = {}
             out['error'] = 'Not logged in.'
@@ -109,6 +110,18 @@ def ajax_login_required(f):
     wrap.__doc__=f.__doc__
     wrap.__name__=f.__name__
     return wrap
+
+
+"""def get_crsf(request):
+    # https://docs.djangoproject.com/en/1.6/ref/contrib/csrf/#how-to-use-it
+    csrf_token = get_token(request)
+    # OR
+    # from django.core.context_processors import csrf
+    # csrf_token = csrf(request)
+    return HttpResponse(
+        json.dumps(csrf_token),
+        mimetype='application/json',
+        status=200"""
 
 
 def user_summary(request):
@@ -166,7 +179,7 @@ def displacement_map(request):
         settings.SITEURL,
         'geoserver/ows?service=wms&VERSION=%s&request=GetCapabilities' % VERSION)
     wms_request = urllib2.Request(get_capabilities_url)
-    #request.META 'HTTP_COOKIE'
+    #request.META 'HTTP_COOKIE': 'csrftoken=H7UNBZgjRyV6jsxwPe781k7v8kvd9n4t; sessionid=zjv54gww6xbwxmxaofydu4cb66xlczi8',
     wms_request.add_header('sessionid', session_key)
     wms_request.add_header('Authorization', request.META.get('HTTP_COOKIE', ''))
     wms_request.add_header('cookie', request.META.get('HTTP_COOKIE', ''))
@@ -187,7 +200,7 @@ def displacement_map(request):
 
     wms = WebMapService('url', version=VERSION, xml=response_data)
     #print >>sys.stderr, "contents:", list(wms.contents)
-    #for layer in wms.contents
+    #for layer in wms.contents:
     #    print >>sys.stderr, "layer:", layer
     layers = [wms[layer].name for layer in wms.contents]
     #print >>sys.stderr, "layers:", layers
@@ -262,7 +275,7 @@ def displacement_features(request):
 
     wfs = WebFeatureService('url', version=VERSION, xml=data)
     #print >>sys.stderr, "wfs contents:", list(wfs.contents)
-    #for layer in wfs.contents
+    #for layer in wfs.contents:
     #    print >>sys.stderr, "wfs_layer", wfs[layer].__dict__
     #layers = [wfs[layer].name for layer in wfs.contents]
     for layer in wfs.contents:
