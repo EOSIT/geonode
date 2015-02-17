@@ -40,9 +40,11 @@ from django.template import RequestContext
 from django.utils.translation import ugettext as _
 from django.utils import simplejson as json
 from django.utils.html import escape
+from django.views.decorators.csrf import csrf_exempt
 from django.template.defaultfilters import slugify
 from django.forms.models import inlineformset_factory
 from django.db.models import F
+from django.db import IntegrityError
 
 from geonode.tasks.deletion import delete_layer
 from geonode.services.models import Service
@@ -60,6 +62,7 @@ from geonode.utils import resolve_object, llbbox_to_mercator
 from geonode.people.forms import ProfileForm, PocForm
 from geonode.security.views import _perms_info_json
 from geonode.documents.models import get_related_documents
+from geonode.groups.models import GroupProfile
 from geonode.utils import build_social_links
 from geonode.geoserver.helpers import cascading_delete, gs_catalog
 
@@ -125,9 +128,9 @@ def get_csrf(request):
         status=200)
 
 
+@csrf_exempt
 def create_group(request):
     """Create a GeoNode Group from a JSON POST."""
-    from geonode.groups.models import GroupProfile
     out = {}
     if request.method == 'GET':
         from django.middleware.csrf import get_token
@@ -141,7 +144,7 @@ def create_group(request):
             status=200)
     elif request.method == 'POST':
         if not request.user.is_authenticated():
-            out['error'] = 'Not logged in.'
+            out['error'] = 'Not logged in'
         else:
             json_data = json.loads(request.body)
             title = json_data.get('title')
@@ -157,11 +160,11 @@ def create_group(request):
                     group.access = access
                     group.clean()
                     group.save()
-                    out['group_id'] = group.id 
+                    out['group_id'] = group.id
                 except IntegrityError:
                     out['error'] = 'That group already exists'
             else:
-                out['error'] = 'Insufficient data to create group.'
+                out['error'] = 'Insufficient data to create group'
     else:
         pass
     return HttpResponse(
@@ -190,7 +193,7 @@ def user_summary(request):
         out['organization'] = profile.organization
         out['position'] = profile.position
     except:
-        out['error'] = 'Profile details not available.'   
+        out['error'] = 'Profile details not available.'
     return HttpResponse(
         json.dumps(out),
         mimetype='application/json',
@@ -220,9 +223,9 @@ def displacement_map(request):
     date_start = request.GET.get('date_start', None)
     date_end = request.GET.get('date_end', None)
     print >>sys.stderr, "session_key", session_key
-    print >>sys.stderr, "META", request.META     
+    print >>sys.stderr, "META", request.META
     get_capabilities_url = os.path.join(
-        settings.SITEURL, 
+        settings.SITEURL,
         'geoserver/ows?service=wms&VERSION=%s&request=GetCapabilities' % VERSION)
     wms_request = urllib2.Request(get_capabilities_url)
     #request.META 'HTTP_COOKIE': 'csrftoken=H7UNBZgjRyV6jsxwPe781k7v8kvd9n4t; sessionid=zjv54gww6xbwxmxaofydu4cb66xlczi8',
@@ -232,7 +235,7 @@ def displacement_map(request):
     wms_request.add_header('csrf-cookie', request.META.get('CSRF_COOKIE', ''))
     try:
         response = urllib2.urlopen(wms_request)
-    except urllib2.HTTPError, error: 
+    except urllib2.HTTPError, error:
         out['error'] = error.read() or 'Unable to connect to GeoServer'
         return HttpResponse(
             json.dumps(out),
@@ -274,7 +277,7 @@ def displacement_map(request):
                         datetime.datetime.strptime(s, LAYER_DATE_FORMAT) \
                             for s in time_list]
                     for _date in _date_times:
-                        if _date <= _date_end and _date >= _date_start: 
+                        if _date <= _date_end and _date >= _date_start:
                             _d = _date.strftime("%Y-%m-%dT%H:%M:%S.%f")
                             _time_list.append("%sZ" % _d[:-3])  # round to 3 dec
                     time_list = _time_list
@@ -300,7 +303,7 @@ def displacement_features(request):
     out['base_url'] = os.path.join(settings.SITEURL, 'geoserver/wfs/')
     out['date_field'] = 'observed_date'
     get_capabilities_url = os.path.join(
-        settings.SITEURL, 
+        settings.SITEURL,
         'geoserver/ows?service=wfs&version=%s&request=GetCapabilities' % VERSION)
     session_key = request.session.session_key
     wfs_request = urllib2.Request(get_capabilities_url)
