@@ -85,7 +85,7 @@ urlpatterns = patterns('',
                        url(r'^security/permissions/(?P<resource_id>\d+)$',
                            'geonode.security.views.resource_permissions',
                            name='resource_permissions'),
-		               # CORS url
+		               #CORS url
                        url(r'^account/cors_login/$', 'geonode.views.cors_login',
                            name='cors_login'),
                        url(r'^account/cors_logout/$', 'geonode.views.cors_logout',

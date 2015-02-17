@@ -53,9 +53,9 @@ urlpatterns = patterns(
     url(
         r'^displacement/features/$',
         'displacement_features',
-         name='displacement_features'
+        name='displacement_features'
     ),
-   url(
+    url(
         r'^user/summary/$',
         'user_summary',
         name='user_summary'

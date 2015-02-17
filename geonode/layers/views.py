@@ -121,7 +121,7 @@ def ajax_login_required(f):
     return HttpResponse(
         json.dumps(csrf_token),
         mimetype='application/json',
-        status=200"""
+        status=200)"""
 
 
 def user_summary(request):
@@ -144,7 +144,7 @@ def user_summary(request):
         out['organization'] = profile.organization
         out['position'] = profile.position
     except:
-        out['error'] = 'Profile details not available.'
+        out['error'] = 'Profile details not available.'   
     return HttpResponse(
         json.dumps(out),
         mimetype='application/json',
@@ -174,9 +174,9 @@ def displacement_map(request):
     date_start = request.GET.get('date_start', None)
     date_end = request.GET.get('date_end', None)
     print >>sys.stderr, "session_key", session_key
-    print >>sys.stderr, "META", request.META
+    print >>sys.stderr, "META", request.META     
     get_capabilities_url = os.path.join(
-        settings.SITEURL,
+        settings.SITEURL, 
         'geoserver/ows?service=wms&VERSION=%s&request=GetCapabilities' % VERSION)
     wms_request = urllib2.Request(get_capabilities_url)
     #request.META 'HTTP_COOKIE': 'csrftoken=H7UNBZgjRyV6jsxwPe781k7v8kvd9n4t; sessionid=zjv54gww6xbwxmxaofydu4cb66xlczi8',
@@ -186,7 +186,7 @@ def displacement_map(request):
     wms_request.add_header('csrf-cookie', request.META.get('CSRF_COOKIE', ''))
     try:
         response = urllib2.urlopen(wms_request)
-    except urllib2.HTTPError, error:
+    except urllib2.HTTPError, error: 
         out['error'] = error.read() or 'Unable to connect to GeoServer'
         return HttpResponse(
             json.dumps(out),
@@ -228,7 +228,7 @@ def displacement_map(request):
                         datetime.datetime.strptime(s, LAYER_DATE_FORMAT) \
                             for s in time_list]
                     for _date in _date_times:
-                        if _date <= _date_end and _date >= _date_start:
+                        if _date <= _date_end and _date >= _date_start: 
                             _d = _date.strftime("%Y-%m-%dT%H:%M:%S.%f")
                             _time_list.append("%sZ" % _d[:-3])  # round to 3 dec
                     time_list = _time_list
@@ -254,7 +254,7 @@ def displacement_features(request):
     out['base_url'] = os.path.join(settings.SITEURL, 'geoserver/wfs/')
     out['date_field'] = 'observed_date'
     get_capabilities_url = os.path.join(
-        settings.SITEURL,
+        settings.SITEURL, 
         'geoserver/ows?service=wfs&version=%s&request=GetCapabilities' % VERSION)
     session_key = request.session.session_key
     wfs_request = urllib2.Request(get_capabilities_url)

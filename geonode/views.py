@@ -31,11 +31,11 @@ from geonode.groups.models import GroupProfile
 from django.core.context_processors import csrf
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.contrib.auth import logout
- 
+
+
 class AjaxLoginForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput)
     username = forms.CharField()
-
 
 #TO TRY TO DEMOSNTRATE CORS LOGIN AND RETRUN OF CSRF TOKEN
 @csrf_exempt # have not yet worked out how to avoid this

@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.urlresolvers import reverse
+from django.conf import settings
 from django.http import Http404, HttpResponseForbidden, HttpResponseRedirect, HttpResponseNotAllowed
 from django.shortcuts import render_to_response, get_object_or_404, redirect
 from django.template import RequestContext
@@ -18,7 +19,7 @@ import sys
 def group_access(request, group):
     if settings.LOCKDOWN_GROUP_PROFILE:
         if not group.user_is_member(request.user) and not request.user.is_staff:
-           return False
+            return False
     return True
 
 
