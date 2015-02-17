@@ -216,9 +216,13 @@ def displacement_map_time(request, date_start, date_end):
 @ajax_login_required
 def displacement_map(request):
     """Return JSON-formatted metadata for the WMS data for a layer(s);
-    The KEYWORD 'displacement_map' is used to source the layer(s)
+
+    The MAP_KEYWORD is used to filter for the correct layer(s)
     """
-    KEYWORD = 'displacement_map'
+    try:
+        MAP_KEYWORD = settings.MAP_KEYWORD
+    except:
+        MAP_KEYWORD = '_displacement_'
     VERSION = '1.1.1'  # owslib does not handle 1.3.0 (2014/10/20)
     LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
     out = {}
@@ -227,12 +231,13 @@ def displacement_map(request):
     session_key = request.session.session_key
     date_start = request.GET.get('date_start', None)
     date_end = request.GET.get('date_end', None)
-    print >>sys.stderr, "session_key", session_key
-    print >>sys.stderr, "META", request.META
+    #print >>sys.stderr, "session_key", session_key
+    #print >>sys.stderr, "META", request.META
     get_capabilities_url = os.path.join(
         settings.SITEURL,
         'geoserver/ows?service=wms&VERSION=%s&request=GetCapabilities' % VERSION)
     wms_request = urllib2.Request(get_capabilities_url)
+    #print >>sys.stderr, "WMS request:", get_capabilities_url
     #request.META 'HTTP_COOKIE': 'csrftoken=H7UNBZgjRyV6jsxwPe781k7v8kvd9n4t; sessionid=zjv54gww6xbwxmxaofydu4cb66xlczi8',
     wms_request.add_header('sessionid', session_key)
     wms_request.add_header('Authorization', request.META.get('HTTP_COOKIE', ''))
@@ -247,6 +252,7 @@ def displacement_map(request):
             mimetype='application/json',
             status=str(error.code))
 
+    #print >>sys.stderr, "response", response
     response_data = response.read()
     #data = HttpResponse(response_data, mimetype="application/xhtml+xml", status=200) #response.read()
     #print >>sys.stderr, "Caps-end", response_data[-1000:]
@@ -260,7 +266,7 @@ def displacement_map(request):
     #print >>sys.stderr, "layers:", layers
     for layer in layers:
         #print >>sys.stderr, "layer:keywords", layer, ':', wms[layer].keywords
-        if KEYWORD in wms[layer].keywords:
+        if MAP_KEYWORD in layer or MAP_KEYWORD in wms[layer].keywords:
             out['layer_name'] = layer
             #print >>sys.stderr, wms[layer].__dict__
             try:
@@ -300,9 +306,13 @@ def displacement_map(request):
 @ajax_login_required
 def displacement_features(request):
     """Return JSON-formatted metadata for the WFS data for a layer(s);
-    The KEYWORD 'displacement_features' is used to source the layer(s)
+
+    The FEATURES_KEYWORD is used to filter for the correct layer(s)
     """
-    KEYWORD = 'displacement_features'
+    try:
+        FEATURES_KEYWORD = settings.FEATURES_KEYWORD
+    except:
+        FEATURES_KEYWORD = 'deformation_features'
     VERSION = '1.0.0'
     out = {}
     out['base_url'] = os.path.join(settings.SITEURL, 'geoserver/wfs/')
@@ -337,7 +347,7 @@ def displacement_features(request):
         _keywords_list = wfs[layer].keywords[0].split(',')
         keywords_list = [key.strip() for key in _keywords_list]
         #print >>sys.stderr, "wfs keywords list", keywords_list
-        if KEYWORD in keywords_list:
+        if FEATURES_KEYWORD in layer or FEATURES_KEYWORD in keywords_list:
             out['layer_name'] = layer
     # results
     status_code = 200
