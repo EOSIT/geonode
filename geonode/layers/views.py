@@ -28,14 +28,16 @@ from owslib.wms import WebMapService
 from owslib.wfs import WebFeatureService
 import sys
 import datetime
+from subprocess import Popen, PIPE
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
-from django.http import HttpResponse, HttpResponseRedirect
+from django.core.exceptions import ObjectDoesNotExist
+from django.http import HttpResponse, HttpResponseRedirect, Http404, \
+    HttpResponseServerError
 from django.shortcuts import render_to_response
 from django.conf import settings
-from django.middleware.csrf import get_token
 from django.template import RequestContext
 from django.utils.translation import ugettext as _
 from django.utils import simplejson as json
@@ -60,6 +62,7 @@ from geonode.utils import GXPMap
 from geonode.layers.utils import file_upload, is_raster, is_vector
 from geonode.utils import resolve_object, llbbox_to_mercator
 from geonode.people.forms import ProfileForm, PocForm
+from geonode.people.models import Profile
 from geonode.security.views import _perms_info_json
 from geonode.documents.models import get_related_documents
 from geonode.groups.models import GroupProfile
@@ -206,6 +209,113 @@ def user_summary(request):
 
 
 @ajax_login_required
+def get_user_groups(request, out={}):
+    """
+        out is a dictionary which can be created by the calling function; its
+        typically set when there is an API call that expects a JSON return.
+    """
+    uid = request.GET.get('uid', None)
+    try:
+        #print >>sys.stderr, "DEBUG:uid", uid
+        _user = Profile.objects.get(username=uid)
+        _user_groups = GroupProfile.groups_for_user(_user)
+        #print >>sys.stderr, "DEBUG:groups", _user_groups
+        return _user , _user_groups
+    except ObjectDoesNotExist:
+        if out:
+            out['error'] = 'User does not exist.'
+            return HttpResponse(
+                json.dumps(out),
+                mimetype='application/json',
+                status=404)
+        else:
+            return None, []
+
+
+def exec_external_cmd(cmd_line):
+    retcode = None
+    try:
+        process = Popen(cmd_line, bufsize=2048, executable="/bin/bash",
+                        shell=True, stdout=None, stderr=None)
+        while retcode == None:
+            retcode = process.poll()
+        if retcode < 0:
+            print >>sys.stderr, "Child was terminated by signal", retcode
+        elif retcode > 0:
+            print >>sys.stderr, "Child returned", retcode
+    except OSError, e:
+        print >>sys.stderr, "Execution failed:", e
+    return retcode
+
+
+@ajax_login_required
+def run_report(request):
+    try:
+        output = settings.REPORTER_DIR
+        script = settings.REPORTER_SCRIPT
+        assert os.path.exists(output)
+        assert os.path.exists(script)
+    except AttributeError:
+        print >>sys.stderr, "Unable to find REPORTER_DIR or REPORTER_SCRIPT in settings"
+        return HttpResponseServerError(
+            'The report setup is not configured properly.')
+    except AssertionError:
+        print >>sys.stderr, "Unable to find REPORTER_DIR or REPORTER_SCRIPT on file system"
+        return HttpResponseServerError(
+            'The report locations are not configured properly.')
+    uid = request.GET.get('uid', None)
+    date_start = request.GET.get('date_start', None)
+    date_end = request.GET.get('date_end', None)
+    user, user_groups = get_user_groups(request)
+    if user and len(user_groups) >= 1:
+        report_filename = '%s/%s.pdf' % (output, user_groups[0])
+        cmd_line = 'phantomjs %s %s %s %s %s' % \
+            (script, report_filename, uid, date_start or '', date_end or '')
+        rc = exec_external_cmd(cmd_line)
+        try:
+            with open(report_filename, 'r') as pdf:
+                response = HttpResponse(pdf.read(), mimetype='application/pdf')
+                response['Content-Disposition'] = \
+                    'inline;filename=subsidence_report.pdf'
+                return response
+            pdf.closed
+        except:
+            print >>sys.stderr, 'Return code: "%s" for report: "%s"' % \
+                (rc, cmd_line)
+            raise Http404('Unable to generate the report.')
+    else:
+        raise Http404('That user is invalid or is not a member of a group.')
+
+
+@ajax_login_required
+def getcapabilities_layers(request):
+    """The CAPABILITIES_CACHE file should contain JSON data in the form:
+        layer_name: [dates,]
+    Example:
+        {
+        'meraka_deformation_features': [],
+        'meraka_displacement_wgs84':  [
+            "2014-09-07T00:00:00.000Z", "2014-10-01T00:00:00.000Z",
+            "2014-10-25T00:00:00.000Z", "2014-11-18T00:00:00.000Z",
+            "2014-12-12T00:00:00.000Z", "2015-01-05T00:00:00.000Z",
+            "2015-01-29T00:00:00.000Z"]
+        }
+    """
+    result = {}
+    try:
+        with open(settings.CAPABILITIES_CACHE) as json_data:
+            result = json.load(json_data)
+            return result
+    except AttributeError:
+        print >>sys.stderr, "Unable to find CAPABILITIES_CACHE in settings"
+    except IOError:
+        print >>sys.stderr, "Unable to load capabilities file"
+    except json.scanner.JSONDecodeError:
+        print >>sys.stderr, "Unable to parse capabilities data"
+    return result
+
+
+@ajax_login_required
 def displacement_map_time(request, date_start, date_end):
     """Return JSON-formatted metadata for the WMS data for a layer(s)
     where a time interval is specified.
@@ -217,7 +327,8 @@ def displacement_map_time(request, date_start, date_end):
 def displacement_map(request):
     """Return JSON-formatted metadata for the WMS data for a layer(s);
 
-    The MAP_KEYWORD is used to filter for the correct layer(s)
+    The MAP_KEYWORD is used to filter for the correct layer(s); it can be over-
+    ridden by a parameter in the request
     """
     try:
         MAP_KEYWORD = settings.MAP_KEYWORD
@@ -231,14 +342,47 @@ def displacement_map(request):
     session_key = request.session.session_key
     date_start = request.GET.get('date_start', None)
     date_end = request.GET.get('date_end', None)
-    #print >>sys.stderr, "session_key", session_key
-    #print >>sys.stderr, "META", request.META
+    keyword = request.GET.get('keyword',None)
+    if keyword:
+        MAP_KEYWORD = keyword
+    #print >>sys.stderr, "DEBUG:session_key", session_key
+    #print >>sys.stderr, "DEBUG:META", request.META
     get_capabilities_url = os.path.join(
         settings.SITEURL,
         'geoserver/ows?service=wms&VERSION=%s&request=GetCapabilities' % VERSION)
+    user, user_groups = get_user_groups(request, out)
+
+    # if user specified as request parameter, then process via capabilities file
+    if user:
+        try:
+            LAYER_SUFFIXES = settings.LAYER_SUFFIXES
+        except AttributeError:
+            print >>sys.stderr, "Unable to find LAYER_SUFFIXES in settings"
+            LAYER_SUFFIXES = ['_deformation_features', '_displacement_wgs84']
+        layer_names = []
+        for ug in user_groups:
+            layer_names = ['%s%s' % (ug.slug, ls) for ls in LAYER_SUFFIXES]
+        #print >>sys.stderr, "DEBUG:layer_names", layer_names
+        capabilities = getcapabilities_layers(request)
+        if not capabilities:
+            print >>sys.stderr, "Capabilities does not exist or cannot be loaded."
+            out['error'] = 'Capabilities does not exist or cannot be loaded.'
+            return HttpResponse(
+                json.dumps(out),
+                mimetype='application/json',
+                status=404)
+        for lyr in layer_names:
+            dates = capabilities.get(lyr, [])
+            if dates:
+                out["date_indices"] = dates
+                out["layer_name"] = lyr
+                return HttpResponse(
+                    json.dumps(out),
+                    mimetype='application/json',
+                    status=400)
+
     wms_request = urllib2.Request(get_capabilities_url)
     #print >>sys.stderr, "WMS request:", get_capabilities_url
-    #request.META 'HTTP_COOKIE': 'csrftoken=H7UNBZgjRyV6jsxwPe781k7v8kvd9n4t; sessionid=zjv54gww6xbwxmxaofydu4cb66xlczi8',
     wms_request.add_header('sessionid', session_key)
     wms_request.add_header('Authorization', request.META.get('HTTP_COOKIE', ''))
     wms_request.add_header('cookie', request.META.get('HTTP_COOKIE', ''))
@@ -251,24 +395,21 @@ def displacement_map(request):
             json.dumps(out),
             mimetype='application/json',
             status=str(error.code))
-
-    #print >>sys.stderr, "response", response
+    #print >>sys.stderr, "DEBUG:response", response
     response_data = response.read()
-    #data = HttpResponse(response_data, mimetype="application/xhtml+xml", status=200) #response.read()
-    #print >>sys.stderr, "Caps-end", response_data[-1000:]
-    #return HttpResponse(response_data, mimetype="application/xhtml+xml", status=200)
-
+    #print >>sys.stderr, "DEBUG:Caps-end", response_data[-1000:]
     wms = WebMapService('url', version=VERSION, xml=response_data)
-    #print >>sys.stderr, "contents:", list(wms.contents)
+    #print >>sys.stderr, "DEBUG:wms.contents:", list(wms.contents)
+
     #for layer in wms.contents:
-    #    print >>sys.stderr, "layer:", layer
+    #    print >>sys.stderr, "DEBUG:layer:", layer
     layers = [wms[layer].name for layer in wms.contents]
     #print >>sys.stderr, "layers:", layers
     for layer in layers:
-        #print >>sys.stderr, "layer:keywords", layer, ':', wms[layer].keywords
+        #print >>sys.stderr, "DEBUG:layer:keywords", layer, ':', wms[layer].keywords
         if MAP_KEYWORD in layer or MAP_KEYWORD in wms[layer].keywords:
             out['layer_name'] = layer
-            #print >>sys.stderr, wms[layer].__dict__
+            #print >>sys.stderr, "DEBUG:dict", wms[layer].__dict__
             try:
                 time_list = wms[layer].timepositions
             except:
@@ -307,7 +448,8 @@ def displacement_map(request):
 def displacement_features(request):
     """Return JSON-formatted metadata for the WFS data for a layer(s);
 
-    The FEATURES_KEYWORD is used to filter for the correct layer(s)
+    The FEATURES_KEYWORD is used to filter for the correct layer(s); it can be
+    over-ridden by a parameter in the request
     """
     try:
         FEATURES_KEYWORD = settings.FEATURES_KEYWORD
@@ -321,6 +463,10 @@ def displacement_features(request):
         settings.SITEURL,
         'geoserver/ows?service=wfs&version=%s&request=GetCapabilities' % VERSION)
     session_key = request.session.session_key
+    keyword = request.GET.get('keyword', None)
+    if keyword:
+        FEATURES_KEYWORD = keyword
+
     wfs_request = urllib2.Request(get_capabilities_url)
     wfs_request.add_header('sessionid', session_key)
     wfs_request.add_header('Authorization', request.META.get('HTTP_COOKIE', ''))
@@ -335,18 +481,14 @@ def displacement_features(request):
             mimetype='application/json',
             status=str(error.code))
     data = response.read()
-    #return HttpResponse(data, mimetype="application/xhtml+xml",status=200)
-
     wfs = WebFeatureService('url', version=VERSION, xml=data)
-    #print >>sys.stderr, "wfs contents:", list(wfs.contents)
-    #for layer in wfs.contents:
-    #    print >>sys.stderr, "wfs_layer", wfs[layer].__dict__
-    #layers = [wfs[layer].name for layer in wfs.contents]
+    #print >>sys.stderr, "DEBUG:wfs.contents:", list(wfs.contents)
+
     for layer in wfs.contents:
         #print >>sys.stderr, "wfs layer:keywords", layer, wfs[layer].keywords
         _keywords_list = wfs[layer].keywords[0].split(',')
         keywords_list = [key.strip() for key in _keywords_list]
-        #print >>sys.stderr, "wfs keywords list", keywords_list
+        #print >>sys.stderr, "DEBUG:wfs keywords list", keywords_list
         if FEATURES_KEYWORD in layer or FEATURES_KEYWORD in keywords_list:
             out['layer_name'] = layer
     # results
