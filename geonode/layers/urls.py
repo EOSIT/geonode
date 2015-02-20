@@ -39,12 +39,8 @@ urlpatterns = patterns(
     # url(r'^api/batch_permissions/?$', 'batch_permissions',
     #    name='batch_permssions'),
     # url(r'^api/batch_delete/?$', 'batch_delete', name='batch_delete'),
-    # REST API for displacement metadata
-    url(
-        r'^displacement/map/(?P<date_start>\w+|)/(?P<date_end>\w+|)/$',
-        'displacement_map_time',
-        name='displacement_map_time'
-    ),
+
+    # REST API for displacement metadata and reporting
     url(
         r'^displacement/map/$',
         'displacement_map',
