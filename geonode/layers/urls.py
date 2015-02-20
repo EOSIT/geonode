@@ -65,6 +65,11 @@ urlpatterns = patterns(
         'create_group',
         name='create_group'
     ),
+    url(
+        r'^report/$',
+        'run_report',
+        name='run_report'
+    ),
 
 )
 
