@@ -24,7 +24,7 @@ import logging
 import shutil
 import traceback
 import urllib2
-from owslib.wms import WebMapService
+from owslib.wms import WebMapService, ServiceException
 from owslib.wfs import WebFeatureService
 import sys
 import datetime
@@ -210,26 +210,45 @@ def user_summary(request):
 
 @ajax_login_required
 def get_user_groups(request, out={}):
+    """Get groups for either a parameterised user (uid) or the current user.
+
+    Args:
+        out: dictionary
+            out is typically used when there is an API call that expects a
+            JSON return.
     """
-        out is a dictionary which can be created by the calling function; its
-        typically set when there is an API call that expects a JSON return.
-    """
-    uid = request.GET.get('uid', None)
     try:
-        #print >>sys.stderr, "DEBUG:uid", uid
-        _user = Profile.objects.get(username=uid)
-        _user_groups = GroupProfile.groups_for_user(_user)
-        #print >>sys.stderr, "DEBUG:groups", _user_groups
-        return _user , _user_groups
-    except ObjectDoesNotExist:
-        if out:
-            out['error'] = 'User does not exist.'
-            return HttpResponse(
-                json.dumps(out),
-                mimetype='application/json',
-                status=404)
+        reporter_group = settings.REPORTER_GROUP
+    except AttributeError:
+        print >>sys.stderr, "Unable to find REPORTER_GROUP in settings"
+        return HttpResponseServerError(
+            'The report setup is not configured properly.')
+    uid = request.GET.get('uid', None)
+    if uid:
+        # validate that current user can get access to groups
+        request_user_groups = GroupProfile.groups_for_user(request.user)
+        if reporter_group in request_user_groups:
+            try:
+                #print >>sys.stderr, "DEBUG:uid", uid
+                _user = Profile.objects.get(username=uid)
+                _user_groups = GroupProfile.groups_for_user(_user)
+                #print >>sys.stderr, "DEBUG:groups", _user_groups
+                return _user , _user_groups
+            except ObjectDoesNotExist:
+                out['error'] = 'User does not exist.'
         else:
-            return None, []
+            out['error'] = 'Access to user data denied.'
+    else:
+        request_user_groups = GroupProfile.groups_for_user(request.user)
+        #print >>sys.stderr, "DEBUG:groups", _user_groups
+        return request.user, request_user_groups
+    if out:
+        return HttpResponse(
+            json.dumps(out),
+            mimetype='application/json',
+            status=404)
+    else:
+        return None, []
 
 
 def exec_external_cmd(cmd_line):
@@ -267,7 +286,7 @@ def run_report(request):
     date_start = request.GET.get('date_start', None)
     date_end = request.GET.get('date_end', None)
     user, user_groups = get_user_groups(request)
-    if user and len(user_groups) >= 1:
+    if user and user_groups and len(user_groups) >= 1:
         report_filename = '%s/%s.pdf' % (output, user_groups[0])
         cmd_line = 'phantomjs %s %s %s %s %s' % \
             (script, report_filename, uid, date_start or '', date_end or '')
@@ -284,7 +303,7 @@ def run_report(request):
                 (rc, cmd_line)
             raise Http404('Unable to generate the report.')
     else:
-        raise Http404('That user is invalid or is not a member of a group.')
+        raise Http404('That user is invalid or is not a member of the report group.')
 
 
 @ajax_login_required
@@ -398,7 +417,14 @@ def displacement_map(request):
     #print >>sys.stderr, "DEBUG:response", response
     response_data = response.read()
     #print >>sys.stderr, "DEBUG:Caps-end", response_data[-1000:]
-    wms = WebMapService('url', version=VERSION, xml=response_data)
+    try:
+        wms = WebMapService('url', version=VERSION, xml=response_data)
+    except ServiceException, error:
+        out['error'] = error.read() or 'Unable to connect to Web Map Service'
+        return HttpResponse(
+            json.dumps(out),
+            mimetype='application/json',
+            status=str(error.code))
     #print >>sys.stderr, "DEBUG:wms.contents:", list(wms.contents)
 
     #for layer in wms.contents:
@@ -481,7 +507,14 @@ def displacement_features(request):
             mimetype='application/json',
             status=str(error.code))
     data = response.read()
-    wfs = WebFeatureService('url', version=VERSION, xml=data)
+    try:
+        wfs = WebFeatureService('url', version=VERSION, xml=data)
+    except ServiceException, error:
+        out['error'] = error.read() or 'Unable to connect to Web Feature Service'
+        return HttpResponse(
+            json.dumps(out),
+            mimetype='application/json',
+            status=str(error.code))
     #print >>sys.stderr, "DEBUG:wfs.contents:", list(wfs.contents)
 
     for layer in wfs.contents:
