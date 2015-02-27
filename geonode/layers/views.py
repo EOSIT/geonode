@@ -210,45 +210,53 @@ def user_summary(request):
 
 @ajax_login_required
 def get_user_groups(request, out={}):
-    """Get groups for either a parameterised user (uid) or the current user.
+    """Get groups for either a parameterised user (uid) OR the current user.
 
     Args:
         out: dictionary
             out is typically used when there is an API call that expects a
             JSON return.
+    Returns:
+        user, groups, out: tuple
+            user - GeoNode user object
+            groups - list of GeoNode group objects
+            out -  dictionary
     """
+    out['error'] = None
     try:
         reporter_group = settings.REPORTER_GROUP
     except AttributeError:
         print >>sys.stderr, "Unable to find REPORTER_GROUP in settings"
-        return HttpResponseServerError(
-            'The report setup is not configured properly.')
-    uid = request.GET.get('uid', None)
-    if uid:
-        # validate that current user can get access to groups
-        request_user_groups = GroupProfile.groups_for_user(request.user)
-        if reporter_group in request_user_groups:
+        out['error'] = 'The report setup is not configured properly.'
+    if not out['error']:
+        uid = request.GET.get('uid', None)
+        if uid:
+            # validate that current user is allowed access to groups
+            # use the pre-created REPORTER_GROUP as the access mechanism
+            request_user_groups = GroupProfile.groups_for_user(request.user)
+            #print >>sys.stderr, "DEBUG:groups", reporter_group, '~', request_user_groups
             try:
-                #print >>sys.stderr, "DEBUG:uid", uid
-                _user = Profile.objects.get(username=uid)
-                _user_groups = GroupProfile.groups_for_user(_user)
-                #print >>sys.stderr, "DEBUG:groups", _user_groups
-                return _user , _user_groups
+                reporter_group_profile = GroupProfile.objects.get(
+                    title=reporter_group)
             except ObjectDoesNotExist:
-                out['error'] = 'User does not exist.'
+                reporter_group_profile = None
+                out['error'] = 'Reporter group does not exist.'
+            if reporter_group_profile in request_user_groups:
+                try:
+                    #print >>sys.stderr, "DEBUG:uid", uid
+                    _user = Profile.objects.get(username=uid)
+                    _user_groups = GroupProfile.groups_for_user(_user)
+                    #print >>sys.stderr, "DEBUG:groups", _user_groups
+                    return _user , _user_groups, out
+                except ObjectDoesNotExist:
+                    out['error'] = 'User does not exist.'
+            else:
+                out['error'] = 'Access to user data denied.'
         else:
-            out['error'] = 'Access to user data denied.'
-    else:
-        request_user_groups = GroupProfile.groups_for_user(request.user)
-        #print >>sys.stderr, "DEBUG:groups", _user_groups
-        return request.user, request_user_groups
-    if out:
-        return HttpResponse(
-            json.dumps(out),
-            mimetype='application/json',
-            status=404)
-    else:
-        return None, []
+            request_user_groups = GroupProfile.groups_for_user(request.user)
+            #print >>sys.stderr, "DEBUG:groups", _user_groups
+            return request.user, request_user_groups, out
+    return None, [], out
 
 
 def exec_external_cmd(cmd_line):
@@ -285,11 +293,12 @@ def run_report(request):
     uid = request.GET.get('uid', None)
     date_start = request.GET.get('date_start', None)
     date_end = request.GET.get('date_end', None)
-    user, user_groups = get_user_groups(request)
+    user, user_groups, out = get_user_groups(request)
     if user and user_groups and len(user_groups) >= 1:
         report_filename = '%s/%s.pdf' % (output, user_groups[0])
         cmd_line = 'phantomjs %s %s %s %s %s' % \
             (script, report_filename, uid, date_start or '', date_end or '')
+        #print >>sys.stderr, "DEBUG:PJS", script, '~', report_filename, '~', uid, '~', date_start, '~', date_end
         rc = exec_external_cmd(cmd_line)
         try:
             with open(report_filename, 'r') as pdf:
@@ -303,7 +312,10 @@ def run_report(request):
                 (rc, cmd_line)
             raise Http404('Unable to generate the report.')
     else:
-        raise Http404('That user is invalid or is not a member of the report group.')
+        if out.get('error'):
+            return HttpResponseServerError(out.get('error'))
+        else:
+            raise Http404('That user is invalid or is not a member of the report group.')
 
 
 @ajax_login_required
@@ -320,6 +332,7 @@ def getcapabilities_layers(request):
             "2015-01-29T00:00:00.000Z"]
         }
     """
+    #TODO - this could be handled by a direct call to GeoServer?
     result = {}
     try:
         with open(settings.CAPABILITIES_CACHE) as json_data:
@@ -369,8 +382,12 @@ def displacement_map(request):
     get_capabilities_url = os.path.join(
         settings.SITEURL,
         'geoserver/ows?service=wms&VERSION=%s&request=GetCapabilities' % VERSION)
-    user, user_groups = get_user_groups(request, out)
-
+    user, user_groups, out = get_user_groups(request, out)
+    if out.get('error'):
+        return HttpResponse(
+        json.dumps(out),
+        mimetype='application/json',
+        status=400)
     # if user specified as request parameter, then process via capabilities file
     if user:
         try:
