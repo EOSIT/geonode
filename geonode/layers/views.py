@@ -182,7 +182,8 @@ def create_group(request):
 
 
 def user_summary(request):
-    """Return JSON-formatted metadata for a logged-in user.
+    """Return JSON-formatted metadata for either a parameterised user (uid)
+    OR the current user.
     """
     from geonode.people.models import Profile
     out = {}
@@ -192,9 +193,10 @@ def user_summary(request):
             json.dumps(out),
             mimetype='application/json',
             status=400)
+    user, user_groups, out = get_user_groups(request)
     try:
-        uname = request.user.username
-        profile = Profile.objects.get(username=uname) #request.user.profile
+        uname = user.username
+        profile = Profile.objects.get(username=uname)  # user.profile
         out['username'] = uname
         out['first_name'] = profile.first_name
         out['last_name'] = profile.last_name
@@ -294,6 +296,7 @@ def run_report(request):
     date_start = request.GET.get('date_start', None)
     date_end = request.GET.get('date_end', None)
     user, user_groups, out = get_user_groups(request)
+    #print >>sys.stderr, "DEBUG:USER/GROUPS:", user, '~', user_groups, '~', out
     if user and user_groups and len(user_groups) >= 1:
         report_filename = '%s/%s.pdf' % (output, user_groups[0])
         cmd_line = 'phantomjs %s %s %s %s %s' % \
@@ -362,6 +365,7 @@ def displacement_map(request):
     The MAP_KEYWORD is used to filter for the correct layer(s); it can be over-
     ridden by a parameter in the request
     """
+    #print >>sys.stderr, "DEBUG:wms view..."
     try:
         MAP_KEYWORD = settings.MAP_KEYWORD
     except:
@@ -389,6 +393,7 @@ def displacement_map(request):
         mimetype='application/json',
         status=400)
     # if user specified as request parameter, then process via capabilities file
+    #print >>sys.stderr, "DEBUG: user, user_groups", user, '~', user_groups
     if user:
         try:
             LAYER_SUFFIXES = settings.LAYER_SUFFIXES
@@ -452,7 +457,8 @@ def displacement_map(request):
         #print >>sys.stderr, "DEBUG:layer:keywords", layer, ':', wms[layer].keywords
         if MAP_KEYWORD in layer or MAP_KEYWORD in wms[layer].keywords:
             out['layer_name'] = layer
-            #print >>sys.stderr, "DEBUG:dict", wms[layer].__dict__
+            #print >>sys.stderr, "DEBUG:layer_dict", wms[layer].__dict__
+            #print >>sys.stderr, "DEBUG:layer_dict id",  wms[layer].__dict__.get('id'), wms[layer].__dict__.get('timepositions')
             try:
                 time_list = wms[layer].timepositions
             except:
@@ -494,6 +500,7 @@ def displacement_features(request):
     The FEATURES_KEYWORD is used to filter for the correct layer(s); it can be
     over-ridden by a parameter in the request
     """
+    #print >>sys.stderr, "DEBUG:wfs view..."
     try:
         FEATURES_KEYWORD = settings.FEATURES_KEYWORD
     except:
@@ -509,6 +516,44 @@ def displacement_features(request):
     keyword = request.GET.get('keyword', None)
     if keyword:
         FEATURES_KEYWORD = keyword
+
+    # THIS IS UNTESTED CODE ==================================================
+    user, user_groups, out = get_user_groups(request, out)
+    if out.get('error'):
+        return HttpResponse(
+        json.dumps(out),
+        mimetype='application/json',
+        status=400)
+    # if user specified as request parameter, then process via capabilities file
+    #print >>sys.stderr, "DEBUG: user, user_groups", user, '~', user_groups
+    if user:
+        try:
+            LAYER_SUFFIXES = settings.LAYER_SUFFIXES
+        except AttributeError:
+            print >>sys.stderr, "Unable to find LAYER_SUFFIXES in settings"
+            LAYER_SUFFIXES = ['_deformation_features', '_displacement_wgs84']
+        layer_names = []
+        for ug in user_groups:
+            layer_names = ['%s%s' % (ug.slug, ls) for ls in LAYER_SUFFIXES]
+        #print >>sys.stderr, "DEBUG:layer_names", layer_names
+        capabilities = getcapabilities_layers(request)
+        if not capabilities:
+            print >>sys.stderr, "Capabilities does not exist or cannot be loaded."
+            out['error'] = 'Capabilities does not exist or cannot be loaded.'
+            return HttpResponse(
+                json.dumps(out),
+                mimetype='application/json',
+                status=404)
+        for lyr in layer_names:
+            dates = capabilities.get(lyr, [])
+            if dates:
+                out["date_indices"] = dates
+                out["layer_name"] = lyr
+                return HttpResponse(
+                    json.dumps(out),
+                    mimetype='application/json',
+                    status=400)
+    # ========================================================================
 
     wfs_request = urllib2.Request(get_capabilities_url)
     wfs_request.add_header('sessionid', session_key)
