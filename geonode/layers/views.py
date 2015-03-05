@@ -307,7 +307,12 @@ def run_report(request):
             with open(report_filename, 'r') as pdf:
                 response = HttpResponse(pdf.read(), mimetype='application/pdf')
                 response['Content-Disposition'] = \
-                    'inline;filename=subsidence_report.pdf'
+                    'attachment; filename=subsidence_report.pdf'
+                response['Content-Transfer-Encoding'] = 'binary'
+                response['Cache-Control'] = \
+                    'must-revalidate, post-check=0, pre-check=0'
+                response['Pragma'] = 'public'
+                response['Content-Length'] = os.stat(report_filename).st_size
                 return response
             pdf.closed
         except:
@@ -348,6 +353,37 @@ def getcapabilities_layers(request):
     except json.scanner.JSONDecodeError:
         print >>sys.stderr, "Unable to parse capabilities data"
     return result
+
+
+#TODO:This next function is written by Graeme to try to provide the date slicing functionality needed for demoday
+def _check_dates(time_list, layer_date_format, date_start=None, date_end=None):
+    """Return list of times."""
+    if (date_start or date_end) and time_list:
+        if not date_start:
+            date_start = time_list[0]
+        if not date_end:
+            date_end = time_list[-1]
+        #try:
+        _time_list = []
+        try:
+            _date_start = datetime.datetime.strptime(
+                date_start, layer_date_format)
+            _date_end = datetime.datetime.strptime(
+                date_end, layer_date_format)
+            _date_times = [
+                datetime.datetime.strptime(s, layer_date_format) \
+                    for s in time_list]
+        except ValueError, e:
+            _date_times = []
+            print >>sys.stderr, "Unable to parse dates: %s" % e
+        for _date in _date_times:
+            if _date <= _date_end and _date >= _date_start:
+                _d = _date.strftime("%Y-%m-%dT%H:%M:%S.%f")
+                _time_list.append("%sZ" % _d[:-3])  # round to 3 dec
+        time_list = _time_list
+        #except:
+        #    pass
+    return time_list
 
 
 @ajax_login_required
@@ -400,30 +436,44 @@ def displacement_map(request):
         except AttributeError:
             print >>sys.stderr, "Unable to find LAYER_SUFFIXES in settings"
             LAYER_SUFFIXES = ['_deformation_features', '_displacement_wgs84']
+        try:
+            LAYER_DATE_FORMAT = settings.LAYER_DATE_FORMAT
+        except AttributeError:
+            print >>sys.stderr, "Unable to find LAYER_DATE_FORMAT in settings"
+            LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
         layer_names = []
         for ug in user_groups:
-            layer_names = ['%s%s' % (ug.slug, ls) for ls in LAYER_SUFFIXES]
-        #print >>sys.stderr, "DEBUG:layer_names", layer_names
+            layer_names = ['subsmon:%s%s' % (ug.slug, ls) for ls in LAYER_SUFFIXES if 'features' not in ls]#FIXME: hardcoding of namespace
+        #print >>sys.stderr, "DEBUG:441 layer_names", layer_names
         capabilities = getcapabilities_layers(request)
         if not capabilities:
             print >>sys.stderr, "Capabilities does not exist or cannot be loaded."
             out['error'] = 'Capabilities does not exist or cannot be loaded.'
-            return HttpResponse(
-                json.dumps(out),
-                mimetype='application/json',
-                status=404)
-        for lyr in layer_names:
-            dates = capabilities.get(lyr, [])
-            if dates:
-                out["date_indices"] = dates
-                out["layer_name"] = lyr
-                return HttpResponse(
-                    json.dumps(out),
-                    mimetype='application/json',
-                    status=400)
+        else:
+            for lyr in layer_names:
+                dates = capabilities.get(lyr, [])
+                if dates:
+                    formatted_dates = _check_dates(dates, LAYER_DATE_FORMAT,
+                                                   date_start, date_end)
+                    #print >>sys.stderr, "DEBUG:452 dates", formatted_dates
+                    if formatted_dates:
+                        out["date_indices"] = formatted_dates
+                        out["layer_name"] = lyr
+                        return HttpResponse(
+                            json.dumps(out),
+                            mimetype='application/json',
+                            status=200)
+                    else:
+                         out['error'] = 'Unable to find or format map dates in capabilities document'
+                else:
+                    out['error'] = 'No map dates found in capabilities document'
+        return HttpResponse(
+            json.dumps(out),
+            mimetype='application/json',
+            status=400)
 
     wms_request = urllib2.Request(get_capabilities_url)
-    #print >>sys.stderr, "WMS request:", get_capabilities_url
+    #print >>sys.stderr, "DEBUG:WMS request url:", get_capabilities_url
     wms_request.add_header('sessionid', session_key)
     wms_request.add_header('Authorization', request.META.get('HTTP_COOKIE', ''))
     wms_request.add_header('cookie', request.META.get('HTTP_COOKIE', ''))
@@ -513,6 +563,8 @@ def displacement_features(request):
         settings.SITEURL,
         'geoserver/ows?service=wfs&version=%s&request=GetCapabilities' % VERSION)
     session_key = request.session.session_key
+    date_start = request.GET.get('date_start', None)
+    date_end = request.GET.get('date_end', None)
     keyword = request.GET.get('keyword', None)
     if keyword:
         FEATURES_KEYWORD = keyword
@@ -532,10 +584,15 @@ def displacement_features(request):
         except AttributeError:
             print >>sys.stderr, "Unable to find LAYER_SUFFIXES in settings"
             LAYER_SUFFIXES = ['_deformation_features', '_displacement_wgs84']
+        try:
+            LAYER_DATE_FORMAT = settings.LAYER_DATE_FORMAT
+        except AttributeError:
+            print >>sys.stderr, "Unable to find LAYER_DATE_FORMAT in settings"
+            LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
         layer_names = []
         for ug in user_groups:
-            layer_names = ['%s%s' % (ug.slug, ls) for ls in LAYER_SUFFIXES]
-        #print >>sys.stderr, "DEBUG:layer_names", layer_names
+            layer_names = ['subsmon:%s%s' % (ug.slug, ls) for ls in LAYER_SUFFIXES if 'displacement' not in ls]#FIXME: hardcoding of namespace
+        #print >>sys.stderr, "DEBUG:589 layer_names", layer_names
         capabilities = getcapabilities_layers(request)
         if not capabilities:
             print >>sys.stderr, "Capabilities does not exist or cannot be loaded."
@@ -544,15 +601,28 @@ def displacement_features(request):
                 json.dumps(out),
                 mimetype='application/json',
                 status=404)
-        for lyr in layer_names:
-            dates = capabilities.get(lyr, [])
-            if dates:
-                out["date_indices"] = dates
-                out["layer_name"] = lyr
-                return HttpResponse(
-                    json.dumps(out),
-                    mimetype='application/json',
-                    status=400)
+        else:
+            for lyr in layer_names:
+                dates = capabilities.get(lyr, [])
+                if dates:
+                    formatted_dates = _check_dates(dates, LAYER_DATE_FORMAT,
+                                                   date_start, date_end)
+                    #print >>sys.stderr, "DEBUG:604 dates", formatted_dates
+                    if formatted_dates:
+                        out["date_indices"] = formatted_dates
+                        out["layer_name"] = lyr
+                        return HttpResponse(
+                            json.dumps(out),
+                            mimetype='application/json',
+                            status=200)
+                    else:
+                         out['error'] = 'Unable to find or format features dates in capabilities document'
+                else:
+                    out['error'] = 'No features dates found in capabilities document'
+        return HttpResponse(
+            json.dumps(out),
+            mimetype='application/json',
+            status=400)
     # ========================================================================
 
     wfs_request = urllib2.Request(get_capabilities_url)
@@ -580,7 +650,7 @@ def displacement_features(request):
     #print >>sys.stderr, "DEBUG:wfs.contents:", list(wfs.contents)
 
     for layer in wfs.contents:
-        #print >>sys.stderr, "wfs layer:keywords", layer, wfs[layer].keywords
+        #print >>sys.stderr, "DEBUG:wfs layer:keywords", layer, wfs[layer].keywords
         _keywords_list = wfs[layer].keywords[0].split(',')
         keywords_list = [key.strip() for key in _keywords_list]
         #print >>sys.stderr, "DEBUG:wfs keywords list", keywords_list
