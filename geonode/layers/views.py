@@ -195,12 +195,17 @@ def user_summary(request):
             status=400)
     user, user_groups, out = get_user_groups(request)
     try:
+        orgs, groups = [], []
+        for user_group in user_groups:
+            orgs.append(user_group.description)
+            groups.append(user_group.pk)
         uname = user.username
         profile = Profile.objects.get(username=uname)  # user.profile
         out['username'] = uname
         out['first_name'] = profile.first_name
         out['last_name'] = profile.last_name
-        out['organization'] = profile.organization
+        out['organization'] = orgs
+        out['groups'] = groups
         out['position'] = profile.position
     except:
         out['error'] = 'Profile details not available.'
@@ -236,7 +241,7 @@ def get_user_groups(request, out={}):
             # validate that current user is allowed access to groups
             # use the pre-created REPORTER_GROUP as the access mechanism
             request_user_groups = GroupProfile.groups_for_user(request.user)
-            #print >>sys.stderr, "DEBUG:groups", reporter_group, '~', request_user_groups
+            #print >>sys.stderr, "DEBUG:groups:reporter/user", reporter_group, '~', request_user_groups
             try:
                 reporter_group_profile = GroupProfile.objects.get(
                     title=reporter_group)
@@ -248,7 +253,7 @@ def get_user_groups(request, out={}):
                     #print >>sys.stderr, "DEBUG:uid", uid
                     _user = Profile.objects.get(username=uid)
                     _user_groups = GroupProfile.groups_for_user(_user)
-                    #print >>sys.stderr, "DEBUG:groups", _user_groups
+                    #print >>sys.stderr, "DEBUG:groups:uid", _user_groups
                     return _user , _user_groups, out
                 except ObjectDoesNotExist:
                     out['error'] = 'User does not exist.'
@@ -256,7 +261,9 @@ def get_user_groups(request, out={}):
                 out['error'] = 'Access to user data denied.'
         else:
             request_user_groups = GroupProfile.groups_for_user(request.user)
-            #print >>sys.stderr, "DEBUG:groups", _user_groups
+            if not request_user_groups:
+                out['error'] = 'User is not a member of any group.'
+            #print >>sys.stderr, "DEBUG:groups:user", request.user, '~', request_user_groups
             return request.user, request_user_groups, out
     return None, [], out
 
@@ -292,12 +299,12 @@ def run_report(request):
         print >>sys.stderr, "Unable to find REPORTER_DIR or REPORTER_SCRIPT on file system"
         return HttpResponseServerError(
             'The report locations are not configured properly.')
-    uid = request.GET.get('uid', None)
     date_start = request.GET.get('date_start', None)
     date_end = request.GET.get('date_end', None)
     user, user_groups, out = get_user_groups(request)
     #print >>sys.stderr, "DEBUG:USER/GROUPS:", user, '~', user_groups, '~', out
     if user and user_groups and len(user_groups) >= 1:
+        uid = user.username
         report_filename = '%s/%s.pdf' % (output, user_groups[0])
         cmd_line = 'phantomjs %s %s %s %s %s' % \
             (script, report_filename, uid, date_start or '', date_end or '')
@@ -329,7 +336,7 @@ def run_report(request):
 @ajax_login_required
 def getcapabilities_layers(request):
     """The CAPABILITIES_CACHE file should contain JSON data in the form:
-        layer_name: [dates,]
+        layer_name: [dates,] where layer_name is composed of group & type.
     Example:
         {
         'meraka_deformation_features': [],
@@ -351,25 +358,24 @@ def getcapabilities_layers(request):
     except IOError:
         print >>sys.stderr, "Unable to load capabilities file"
     except json.scanner.JSONDecodeError:
-        print >>sys.stderr, "Unable to parse capabilities data"
+        print >>sys.stderr, "Unable to decode capabilities data"
     return result
 
 
-#TODO:This next function is written by Graeme to try to provide the date slicing functionality needed for demoday
 def _check_dates(time_list, layer_date_format, date_start=None, date_end=None):
-    """Return list of times."""
+    """Return list of date/time strings in ISO format (%Y-%m-%dT%H:%M:%S.%f)"""
+    UI_DATE_FORMAT = "%Y-%m-%d"  #format expected from the web interface
     if (date_start or date_end) and time_list:
         if not date_start:
             date_start = time_list[0]
         if not date_end:
             date_end = time_list[-1]
-        #try:
         _time_list = []
         try:
             _date_start = datetime.datetime.strptime(
-                date_start, layer_date_format)
+                date_start, UI_DATE_FORMAT)
             _date_end = datetime.datetime.strptime(
-                date_end, layer_date_format)
+                date_end, UI_DATE_FORMAT)
             _date_times = [
                 datetime.datetime.strptime(s, layer_date_format) \
                     for s in time_list]
@@ -381,9 +387,78 @@ def _check_dates(time_list, layer_date_format, date_start=None, date_end=None):
                 _d = _date.strftime("%Y-%m-%dT%H:%M:%S.%f")
                 _time_list.append("%sZ" % _d[:-3])  # round to 3 dec
         time_list = _time_list
-        #except:
-        #    pass
     return time_list
+
+
+def get_group_layers(request, out, user_groups, layer_type,
+                     date_start, date_end):
+    """
+    Return a set of layers of specific type for a particular user group for a
+    given date range from a custom capabilities list.
+
+    Args:
+        request: HTTP request
+        out: dictionary
+            Stores messages/data for return as JSON
+        user_groups: list
+            GeoNode Group objects
+        layer_type: string
+            One of: ['displacement' | 'features']
+        date_start, date_end: strings
+            "%Y-%m-%dT%H:%M:%S.%f"
+    """
+    try:
+        LAYER_NAMESPACE = settings.LAYER_NAMESPACE
+    except:
+        print >>sys.stderr, "Unable to find LAYER_NAMESPACE in settings"
+        LAYER_NAMESPACE = 'subsmon'
+    try:
+        LAYER_SUFFIXES = settings.LAYER_SUFFIXES
+    except AttributeError:
+        print >>sys.stderr, "Unable to find LAYER_SUFFIXES in settings"
+        LAYER_SUFFIXES = ['_deformation_features', '_displacement_wgs84']
+    try:
+        LAYER_DATE_FORMAT = settings.LAYER_DATE_FORMAT
+    except AttributeError:
+        print >>sys.stderr, "Unable to find LAYER_DATE_FORMAT in settings"
+        LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+    layer_names = []
+    for ug in user_groups:
+        layer_names = ['%s:%s%s' % (LAYER_NAMESPACE, ug.slug, ls) \
+            for ls in LAYER_SUFFIXES if layer_type not in ls]
+    #print >>sys.stderr, "DEBUG:layer_names", layer_names
+
+    capabilities = getcapabilities_layers(request)
+    if not capabilities:
+        print >>sys.stderr, "Capabilities do not exist or cannot be loaded."
+        out['error'] = 'Capabilities do not exist or cannot be loaded.'
+        return HttpResponse(
+            json.dumps(out),
+            mimetype='application/json',
+            status=404)
+    else:
+        for lyr in layer_names:
+            dates = capabilities.get(lyr, [])
+            if dates:
+                formatted_dates = _check_dates(dates, LAYER_DATE_FORMAT,
+                                               date_start, date_end)
+                #print >>sys.stderr, "DEBUG:dates", formatted_dates
+                if formatted_dates:
+                    out["date_indices"] = formatted_dates
+                    out["layer_name"] = lyr
+                    return HttpResponse(
+                        json.dumps(out),
+                        mimetype='application/json',
+                        status=200)
+                else:
+                     out['error'] = 'Unable to find or format %s dates in capabilities document' % layer_type
+            else:
+                out['error'] = 'No %s dates found in capabilities document' % layer_type
+
+    return HttpResponse(
+        json.dumps(out),
+        mimetype='application/json',
+        status=400)
 
 
 @ajax_login_required
@@ -407,7 +482,7 @@ def displacement_map(request):
     except:
         MAP_KEYWORD = '_displacement_'
     VERSION = '1.1.1'  # owslib does not handle 1.3.0 (2014/10/20)
-    LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+    LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"  # default
     out = {}
 
     out['base_url'] = os.path.join(settings.SITEURL, 'geoserver/wms/')
@@ -423,54 +498,16 @@ def displacement_map(request):
         settings.SITEURL,
         'geoserver/ows?service=wms&VERSION=%s&request=GetCapabilities' % VERSION)
     user, user_groups, out = get_user_groups(request, out)
+    #print >>sys.stderr, "DEBUG: user, user_groups", user, '~', user_groups
     if out.get('error'):
         return HttpResponse(
         json.dumps(out),
         mimetype='application/json',
         status=400)
-    # if user specified as request parameter, then process via capabilities file
-    #print >>sys.stderr, "DEBUG: user, user_groups", user, '~', user_groups
+    # if user in request parameter, then process via capabilities file
     if user:
-        try:
-            LAYER_SUFFIXES = settings.LAYER_SUFFIXES
-        except AttributeError:
-            print >>sys.stderr, "Unable to find LAYER_SUFFIXES in settings"
-            LAYER_SUFFIXES = ['_deformation_features', '_displacement_wgs84']
-        try:
-            LAYER_DATE_FORMAT = settings.LAYER_DATE_FORMAT
-        except AttributeError:
-            print >>sys.stderr, "Unable to find LAYER_DATE_FORMAT in settings"
-            LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
-        layer_names = []
-        for ug in user_groups:
-            layer_names = ['subsmon:%s%s' % (ug.slug, ls) for ls in LAYER_SUFFIXES if 'features' not in ls]#FIXME: hardcoding of namespace
-        #print >>sys.stderr, "DEBUG:441 layer_names", layer_names
-        capabilities = getcapabilities_layers(request)
-        if not capabilities:
-            print >>sys.stderr, "Capabilities does not exist or cannot be loaded."
-            out['error'] = 'Capabilities does not exist or cannot be loaded.'
-        else:
-            for lyr in layer_names:
-                dates = capabilities.get(lyr, [])
-                if dates:
-                    formatted_dates = _check_dates(dates, LAYER_DATE_FORMAT,
-                                                   date_start, date_end)
-                    #print >>sys.stderr, "DEBUG:452 dates", formatted_dates
-                    if formatted_dates:
-                        out["date_indices"] = formatted_dates
-                        out["layer_name"] = lyr
-                        return HttpResponse(
-                            json.dumps(out),
-                            mimetype='application/json',
-                            status=200)
-                    else:
-                         out['error'] = 'Unable to find or format map dates in capabilities document'
-                else:
-                    out['error'] = 'No map dates found in capabilities document'
-        return HttpResponse(
-            json.dumps(out),
-            mimetype='application/json',
-            status=400)
+        get_group_layers(request, out, user_groups, 'displacement',
+                        date_start, date_end)
 
     wms_request = urllib2.Request(get_capabilities_url)
     #print >>sys.stderr, "DEBUG:WMS request url:", get_capabilities_url
@@ -569,61 +606,17 @@ def displacement_features(request):
     if keyword:
         FEATURES_KEYWORD = keyword
 
-    # THIS IS UNTESTED CODE ==================================================
     user, user_groups, out = get_user_groups(request, out)
+    #print >>sys.stderr, "DEBUG: user, user_groups", user, '~', user_groups
     if out.get('error'):
         return HttpResponse(
         json.dumps(out),
         mimetype='application/json',
         status=400)
     # if user specified as request parameter, then process via capabilities file
-    #print >>sys.stderr, "DEBUG: user, user_groups", user, '~', user_groups
     if user:
-        try:
-            LAYER_SUFFIXES = settings.LAYER_SUFFIXES
-        except AttributeError:
-            print >>sys.stderr, "Unable to find LAYER_SUFFIXES in settings"
-            LAYER_SUFFIXES = ['_deformation_features', '_displacement_wgs84']
-        try:
-            LAYER_DATE_FORMAT = settings.LAYER_DATE_FORMAT
-        except AttributeError:
-            print >>sys.stderr, "Unable to find LAYER_DATE_FORMAT in settings"
-            LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
-        layer_names = []
-        for ug in user_groups:
-            layer_names = ['subsmon:%s%s' % (ug.slug, ls) for ls in LAYER_SUFFIXES if 'displacement' not in ls]#FIXME: hardcoding of namespace
-        #print >>sys.stderr, "DEBUG:589 layer_names", layer_names
-        capabilities = getcapabilities_layers(request)
-        if not capabilities:
-            print >>sys.stderr, "Capabilities does not exist or cannot be loaded."
-            out['error'] = 'Capabilities does not exist or cannot be loaded.'
-            return HttpResponse(
-                json.dumps(out),
-                mimetype='application/json',
-                status=404)
-        else:
-            for lyr in layer_names:
-                dates = capabilities.get(lyr, [])
-                if dates:
-                    formatted_dates = _check_dates(dates, LAYER_DATE_FORMAT,
-                                                   date_start, date_end)
-                    #print >>sys.stderr, "DEBUG:604 dates", formatted_dates
-                    if formatted_dates:
-                        out["date_indices"] = formatted_dates
-                        out["layer_name"] = lyr
-                        return HttpResponse(
-                            json.dumps(out),
-                            mimetype='application/json',
-                            status=200)
-                    else:
-                         out['error'] = 'Unable to find or format features dates in capabilities document'
-                else:
-                    out['error'] = 'No features dates found in capabilities document'
-        return HttpResponse(
-            json.dumps(out),
-            mimetype='application/json',
-            status=400)
-    # ========================================================================
+        get_group_layers(request, out, user_groups, 'displacement',
+                        date_start, date_end)
 
     wfs_request = urllib2.Request(get_capabilities_url)
     wfs_request.add_header('sessionid', session_key)
