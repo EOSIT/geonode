@@ -52,6 +52,11 @@ urlpatterns = patterns(
         name='displacement_features'
     ),
     url(
+        r'^displacement/interferogram/$',
+        'displacement_interferogram',
+        name='displacement_interferogram'
+    ),
+    url(
         r'^user/summary/$',
         'user_summary',
         name='user_summary'

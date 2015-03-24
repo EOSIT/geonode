@@ -75,6 +75,7 @@ def geoserver_pre_save(instance, sender, **kwargs):
         for key in ['typename', 'store', 'storeType']:
             setattr(instance, key, values[key])
 
+    gs_catalog.reload()  # required for updatelayers to access changes
     gs_resource = gs_catalog.get_resource(
         instance.name,
         store=instance.store,

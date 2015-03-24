@@ -403,7 +403,7 @@ def get_group_layers(request, out, user_groups, layer_type,
         user_groups: list
             GeoNode Group objects
         layer_type: string
-            One of: ['displacement' | 'features']
+            One of: ['displacement' | 'features' | 'interferogram']
         date_start, date_end: strings
             "%Y-%m-%dT%H:%M:%S.%f"
     """
@@ -416,7 +416,8 @@ def get_group_layers(request, out, user_groups, layer_type,
         LAYER_SUFFIXES = settings.LAYER_SUFFIXES
     except AttributeError:
         print >>sys.stderr, "Unable to find LAYER_SUFFIXES in settings"
-        LAYER_SUFFIXES = ['_deformation_features', '_displacement_wgs84']
+        LAYER_SUFFIXES = ['_deformation_features', '_displacement_wgs84',
+                          '_interferogram_wgs84']
     try:
         LAYER_DATE_FORMAT = settings.LAYER_DATE_FORMAT
     except AttributeError:
@@ -470,28 +471,57 @@ def displacement_map_time(request, date_start, date_end):
 
 
 @ajax_login_required
+def displacement_interferogram(request):
+    """Return JSON-formatted metadata for the WMS data for a layer(s)
+
+    The _KEYWORD is used to filter for the correct type of layer(s)
+    """
+    #print >>sys.stderr, "DEBUG:interferogram view..."
+    try:
+        INTERFEROGRAM_KEYWORD = settings.INTERFEROGRAM_KEYWORD
+    except:
+        INTERFEROGRAM_KEYWORD = '_interferogram_'
+    return wms_map_layer(request, INTERFEROGRAM_KEYWORD, 'interferogram')
+
+
+@ajax_login_required
 def displacement_map(request):
     """Return JSON-formatted metadata for the WMS data for a layer(s);
 
-    The MAP_KEYWORD is used to filter for the correct layer(s); it can be over-
-    ridden by a parameter in the request
+    The _KEYWORD is used to filter for the correct type of layer(s)
     """
-    #print >>sys.stderr, "DEBUG:wms view..."
+    #print >>sys.stderr, "DEBUG:displacement view..."
     try:
         MAP_KEYWORD = settings.MAP_KEYWORD
     except:
         MAP_KEYWORD = '_displacement_'
+    return wms_map_layer(request, MAP_KEYWORD, 'displacement')
+
+
+@ajax_login_required
+def wms_map_layer(request, key, layer_type):
+    """Return JSON-formatted metadata for the WMS data for a layer(s);
+
+    Args:
+        key: string
+            assigned to the LAYER_KEYWORD to filter for the correct type of
+            layer(s); it can be overridden by a parameter in the request
+        layer_type: string
+            used to filter capabilities doc for the correct type of layer(s)
+            see: get_group_layers()
+    """
+    #print >>sys.stderr, "DEBUG:wms_map view..."
+    LAYER_KEYWORD = key
     VERSION = '1.1.1'  # owslib does not handle 1.3.0 (2014/10/20)
     LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"  # default
     out = {}
-
     out['base_url'] = os.path.join(settings.SITEURL, 'geoserver/wms/')
     session_key = request.session.session_key
     date_start = request.GET.get('date_start', None)
     date_end = request.GET.get('date_end', None)
-    keyword = request.GET.get('keyword',None)
+    keyword = request.GET.get('keyword', None)
     if keyword:
-        MAP_KEYWORD = keyword
+        LAYER_KEYWORD = keyword
     #print >>sys.stderr, "DEBUG:session_key", session_key
     #print >>sys.stderr, "DEBUG:META", request.META
     get_capabilities_url = os.path.join(
@@ -506,7 +536,7 @@ def displacement_map(request):
         status=400)
     # if user in request parameter, then process via capabilities file
     if user:
-        get_group_layers(request, out, user_groups, 'displacement',
+        get_group_layers(request, out, user_groups, layer_type,
                         date_start, date_end)
 
     wms_request = urllib2.Request(get_capabilities_url)
@@ -518,7 +548,7 @@ def displacement_map(request):
     try:
         response = urllib2.urlopen(wms_request)
     except urllib2.HTTPError, error:
-        out['error'] = error.read() or 'Unable to connect to GeoServer'
+        out['error'] = error or 'Unable to connect to GeoServer'
         return HttpResponse(
             json.dumps(out),
             mimetype='application/json',
@@ -529,7 +559,7 @@ def displacement_map(request):
     try:
         wms = WebMapService('url', version=VERSION, xml=response_data)
     except ServiceException, error:
-        out['error'] = error.read() or 'Unable to connect to Web Map Service'
+        out['error'] = error or 'Unable to connect to Web Map Service'
         return HttpResponse(
             json.dumps(out),
             mimetype='application/json',
@@ -542,7 +572,7 @@ def displacement_map(request):
     #print >>sys.stderr, "layers:", layers
     for layer in layers:
         #print >>sys.stderr, "DEBUG:layer:keywords", layer, ':', wms[layer].keywords
-        if MAP_KEYWORD in layer or MAP_KEYWORD in wms[layer].keywords:
+        if LAYER_KEYWORD in layer or LAYER_KEYWORD in wms[layer].keywords:
             out['layer_name'] = layer
             #print >>sys.stderr, "DEBUG:layer_dict", wms[layer].__dict__
             #print >>sys.stderr, "DEBUG:layer_dict id",  wms[layer].__dict__.get('id'), wms[layer].__dict__.get('timepositions')
@@ -626,7 +656,7 @@ def displacement_features(request):
     try:
         response = urllib2.urlopen(wfs_request)
     except urllib2.HTTPError, error:
-        out['error'] = error.read() or 'Unable to connect to GeoServer'
+        out['error'] = error or 'Unable to connect to GeoServer'
         return HttpResponse(
             json.dumps(out),
             mimetype='application/json',
@@ -635,7 +665,7 @@ def displacement_features(request):
     try:
         wfs = WebFeatureService('url', version=VERSION, xml=data)
     except ServiceException, error:
-        out['error'] = error.read() or 'Unable to connect to Web Feature Service'
+        out['error'] = error or 'Unable to connect to Web Feature Service'
         return HttpResponse(
             json.dumps(out),
             mimetype='application/json',
