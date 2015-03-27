@@ -183,7 +183,7 @@ def create_group(request):
 
 def user_summary(request):
     """Return JSON-formatted metadata for either a parameterised user (uid)
-    OR the current user.
+    OR the logged-in user.
     """
     from geonode.people.models import Profile
     out = {}
@@ -194,6 +194,8 @@ def user_summary(request):
             mimetype='application/json',
             status=400)
     user, user_groups, out = get_user_groups(request)
+    if not user:
+        user = request.user  # logged-in user
     try:
         orgs, groups = [], []
         for user_group in user_groups:
@@ -225,7 +227,7 @@ def get_user_groups(request, out={}):
             JSON return.
     Returns:
         user, groups, out: tuple
-            user - GeoNode user object
+            user - GeoNode user object OR None if current user
             groups - list of GeoNode group objects
             out -  dictionary
     """
@@ -237,6 +239,7 @@ def get_user_groups(request, out={}):
         out['error'] = 'The report setup is not configured properly.'
     if not out['error']:
         uid = request.GET.get('uid', None)
+        #print >>sys.stderr, "DEBUG:uid", uid
         if uid:
             # validate that current user is allowed access to groups
             # use the pre-created REPORTER_GROUP as the access mechanism
@@ -250,7 +253,6 @@ def get_user_groups(request, out={}):
                 out['error'] = 'Reporter group does not exist.'
             if reporter_group_profile in request_user_groups:
                 try:
-                    #print >>sys.stderr, "DEBUG:uid", uid
                     _user = Profile.objects.get(username=uid)
                     _user_groups = GroupProfile.groups_for_user(_user)
                     #print >>sys.stderr, "DEBUG:groups:uid", _user_groups
@@ -264,7 +266,7 @@ def get_user_groups(request, out={}):
             if not request_user_groups:
                 out['error'] = 'User is not a member of any group.'
             #print >>sys.stderr, "DEBUG:groups:user", request.user, '~', request_user_groups
-            return request.user, request_user_groups, out
+            return None, request_user_groups, out
     return None, [], out
 
 
@@ -302,9 +304,11 @@ def run_report(request):
     date_start = request.GET.get('date_start', None)
     date_end = request.GET.get('date_end', None)
     user, user_groups, out = get_user_groups(request)
+    if not user:
+        user = request.user  # logged-in user
     #print >>sys.stderr, "DEBUG:USER/GROUPS:", user, '~', user_groups, '~', out
     if user and user_groups and len(user_groups) >= 1:
-        uid = user.username
+        uid = user.username or user
         report_filename = '%s/%s.pdf' % (output, user_groups[0])
         cmd_line = 'phantomjs %s %s %s %s %s' % \
             (script, report_filename, uid, date_start or '', date_end or '')
@@ -364,30 +368,40 @@ def getcapabilities_layers(request):
 
 def _check_dates(time_list, layer_date_format, date_start=None, date_end=None):
     """Return list of date/time strings in ISO format (%Y-%m-%dT%H:%M:%S.%f)"""
+    #TODO - add this to local_settings
     UI_DATE_FORMAT = "%Y-%m-%d"  #format expected from the web interface
+    LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"  # ISO default
+    _error = None
     if (date_start or date_end) and time_list:
-        if not date_start:
-            date_start = time_list[0]
-        if not date_end:
-            date_end = time_list[-1]
         _time_list = []
         try:
-            _date_start = datetime.datetime.strptime(
-                date_start, UI_DATE_FORMAT)
-            _date_end = datetime.datetime.strptime(
-                date_end, UI_DATE_FORMAT)
+            if not date_start:
+                date_start = time_list[0]
+                _date_start = datetime.datetime.strptime(
+                    date_start, LAYER_DATE_FORMAT)
+            else:
+                _date_start = datetime.datetime.strptime(
+                    date_start, UI_DATE_FORMAT)
+            if not date_end:
+                date_end = time_list[-1]
+                _date_end = datetime.datetime.strptime(
+                    date_end, LAYER_DATE_FORMAT)
+            else:
+                _date_end = datetime.datetime.strptime(
+                    date_end, UI_DATE_FORMAT)
             _date_times = [
-                datetime.datetime.strptime(s, layer_date_format) \
+                datetime.datetime.strptime(s, LAYER_DATE_FORMAT) \
                     for s in time_list]
         except ValueError, e:
             _date_times = []
             print >>sys.stderr, "Unable to parse dates: %s" % e
+            _error = "Unable to parse dates: %s" % e
         for _date in _date_times:
             if _date <= _date_end and _date >= _date_start:
                 _d = _date.strftime("%Y-%m-%dT%H:%M:%S.%f")
                 _time_list.append("%sZ" % _d[:-3])  # round to 3 dec
         time_list = _time_list
-    return time_list
+    return _error, time_list
 
 
 def get_group_layers(request, out, user_groups, layer_type,
@@ -403,10 +417,16 @@ def get_group_layers(request, out, user_groups, layer_type,
         user_groups: list
             GeoNode Group objects
         layer_type: string
-            One of: ['displacement' | 'features' | 'interferogram']
+            One of: ['displacement' | 'deformation_features' | 'interferogram']
         date_start, date_end: strings
             "%Y-%m-%dT%H:%M:%S.%f"
     """
+    #print >>sys.stderr, "DEBUG:get_group_layer", layer_type
+    out['type'] = layer_type
+    out['status'] = 200
+    if layer_type not in ['displacement', 'deformation_features', 'interferogram']:
+        msg = 'Unknown layer type: "%s"' % layer_type
+        raise Exception(msg), None, sys.exc_info()[2]
     try:
         LAYER_NAMESPACE = settings.LAYER_NAMESPACE
     except:
@@ -424,9 +444,11 @@ def get_group_layers(request, out, user_groups, layer_type,
         print >>sys.stderr, "Unable to find LAYER_DATE_FORMAT in settings"
         LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
     layer_names = []
+
     for ug in user_groups:
+        #print >>sys.stderr, "DEBUG:user_group", ug.slug
         layer_names = ['%s:%s%s' % (LAYER_NAMESPACE, ug.slug, ls) \
-            for ls in LAYER_SUFFIXES if layer_type not in ls]
+            for ls in LAYER_SUFFIXES if layer_type in ls]
     #print >>sys.stderr, "DEBUG:layer_names", layer_names
 
     capabilities = getcapabilities_layers(request)
@@ -437,22 +459,26 @@ def get_group_layers(request, out, user_groups, layer_type,
             json.dumps(out),
             mimetype='application/json',
             status=404)
-    else:
-        for lyr in layer_names:
+
+    for lyr in layer_names:
+        #print >>sys.stderr, "DEBUG:layer_name", lyr
+        if layer_type in lyr:
+            out['layer_name'] = lyr
             dates = capabilities.get(lyr, [])
             if dates:
-                formatted_dates = _check_dates(dates, LAYER_DATE_FORMAT,
-                                               date_start, date_end)
+                _error, formatted_dates = _check_dates(
+                    dates, LAYER_DATE_FORMAT, date_start, date_end)
                 #print >>sys.stderr, "DEBUG:dates", formatted_dates
                 if formatted_dates:
                     out["date_indices"] = formatted_dates
-                    out["layer_name"] = lyr
+                    out[layer_type] = lyr
                     return HttpResponse(
                         json.dumps(out),
                         mimetype='application/json',
                         status=200)
                 else:
-                     out['error'] = 'Unable to find or format %s dates in capabilities document' % layer_type
+                    out['error'] = _error or \
+                        'Unable to find or format %s dates in capabilities document' % layer_type
             else:
                 out['error'] = 'No %s dates found in capabilities document' % layer_type
 
@@ -471,57 +497,94 @@ def displacement_map_time(request, date_start, date_end):
 
 
 @ajax_login_required
-def displacement_interferogram(request):
-    """Return JSON-formatted metadata for the WMS data for a layer(s)
-
-    The _KEYWORD is used to filter for the correct type of layer(s)
-    """
-    #print >>sys.stderr, "DEBUG:interferogram view..."
-    try:
-        INTERFEROGRAM_KEYWORD = settings.INTERFEROGRAM_KEYWORD
-    except:
-        INTERFEROGRAM_KEYWORD = '_interferogram_'
-    return wms_map_layer(request, INTERFEROGRAM_KEYWORD, 'interferogram')
-
-
-@ajax_login_required
 def displacement_map(request):
-    """Return JSON-formatted metadata for the WMS data for a layer(s);
+    """Return JSON-formatted metadata for the WMS data for a layer(s).
 
-    The _KEYWORD is used to filter for the correct type of layer(s)
+    The MAP_KEYWORDS are used to filter for the correct type of layer(s).
     """
-    #print >>sys.stderr, "DEBUG:displacement view..."
+    #print >>sys.stderr, "DEBUG:_map view..."
     try:
-        MAP_KEYWORD = settings.MAP_KEYWORD
+        MAP_KEYWORDS = settings.MAP_KEYWORDS
     except:
-        MAP_KEYWORD = '_displacement_'
-    return wms_map_layer(request, MAP_KEYWORD, 'displacement')
+        MAP_KEYWORDS = ['displacement', 'interferogram', ]
+    result = []
+    for keyword in MAP_KEYWORDS:
+        outcome = wms_map_layer(request, layer_type=keyword)
+        result.append(outcome)
+    # create backbone-compatible result for the UI
+    backbone = {}
+    for lyr in result:
+        if lyr.get('type') == 'displacement':
+            backbone['displacement_layer_name'] = lyr.get('layer_name')
+            backbone['error'] = lyr.get('error')
+            backbone['base_url'] = lyr.get('base_url')
+            backbone['date_indices'] = lyr.get('date_indices')
+            backbone['status'] = lyr.get('status')
+        elif lyr.get('type') == 'interferogram':
+            backbone['interferogram_layer_name'] = lyr.get('layer_name')
+        else:
+            #TODO raise error if unknown layer type???
+            pass
+    return HttpResponse(
+        json.dumps(backbone),
+        mimetype='application/json',
+        status=200)
 
 
 @ajax_login_required
-def wms_map_layer(request, key, layer_type):
-    """Return JSON-formatted metadata for the WMS data for a layer(s);
+def displacement_features(request):
+    """Return JSON-formatted metadata for the WMS/WFS data for a layer(s).
+
+    The FEATURES_KEYWORD is used to filter for the correct layer(s).
+    """
+    #print >>sys.stderr, "DEBUG:_features view..."
+    try:
+        FEATURES_KEYWORD = settings.FEATURES_KEYWORD
+    except:
+        FEATURES_KEYWORD = 'deformation_features'
+    outcome = wms_map_layer(request, layer_type=FEATURES_KEYWORD)
+    outcome["date_field"] = "observed_date"
+    outcome["base_url"] = os.path.join(settings.SITEURL, 'geoserver/wfs/')
+    return HttpResponse(
+        json.dumps(outcome),
+        mimetype='application/json',
+        status=outcome['status'])
+
+
+@ajax_login_required
+def wms_map_layer(request, layer_type, keyword=None):
+    """Create a meta-data dictionary for the WMS view of a layer(s).
+
+    For example:
+        {"interferogram": "subs:gooieplaats_interferogram_wgs84",
+         "base_url": "http://test.dhcp.meraka.csir.co.za/geoserver/wms/",
+         "date_indices": ["2013-09-07T00:00:00.00Z", "2013-10-01T00:00:00.00Z",
+                          "2013-10-25T00:00:00.00Z"],
+         "error": null}
 
     Args:
-        key: string
-            assigned to the LAYER_KEYWORD to filter for the correct type of
-            layer(s); it can be overridden by a parameter in the request
         layer_type: string
             used to filter capabilities doc for the correct type of layer(s)
-            see: get_group_layers()
+            see also: get_group_layers()
+        keyword: string
+            assigned to the LAYER_KEYWORD to provide an additional (optional)
+            filter for the required layer(s); it will be overridden by a
+            parameter, of the same name, in the request
     """
-    #print >>sys.stderr, "DEBUG:wms_map view..."
-    LAYER_KEYWORD = key
+    #print >>sys.stderr, "DEBUG:wms_map_layer view:", layer_type
+    key = request.GET.get('keyword', None)
+    LAYER_KEYWORD = key or keyword
     VERSION = '1.1.1'  # owslib does not handle 1.3.0 (2014/10/20)
-    LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"  # default
+    #TODO - add this to local_settings
+    UI_DATE_FORMAT = "%Y-%m-%d"  #format expected from the web interface
+    LAYER_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"  # ISO default
     out = {}
+    out['type'] = layer_type
+    out['status'] = 200
     out['base_url'] = os.path.join(settings.SITEURL, 'geoserver/wms/')
     session_key = request.session.session_key
     date_start = request.GET.get('date_start', None)
     date_end = request.GET.get('date_end', None)
-    keyword = request.GET.get('keyword', None)
-    if keyword:
-        LAYER_KEYWORD = keyword
     #print >>sys.stderr, "DEBUG:session_key", session_key
     #print >>sys.stderr, "DEBUG:META", request.META
     get_capabilities_url = os.path.join(
@@ -530,14 +593,13 @@ def wms_map_layer(request, key, layer_type):
     user, user_groups, out = get_user_groups(request, out)
     #print >>sys.stderr, "DEBUG: user, user_groups", user, '~', user_groups
     if out.get('error'):
-        return HttpResponse(
-        json.dumps(out),
-        mimetype='application/json',
-        status=400)
+        out['status'] = 400
+        return out
     # if user in request parameter, then process via capabilities file
     if user:
         get_group_layers(request, out, user_groups, layer_type,
                         date_start, date_end)
+        return out
 
     wms_request = urllib2.Request(get_capabilities_url)
     #print >>sys.stderr, "DEBUG:WMS request url:", get_capabilities_url
@@ -549,30 +611,26 @@ def wms_map_layer(request, key, layer_type):
         response = urllib2.urlopen(wms_request)
     except urllib2.HTTPError, error:
         out['error'] = error or 'Unable to connect to GeoServer'
-        return HttpResponse(
-            json.dumps(out),
-            mimetype='application/json',
-            status=str(error.code))
+        out['status'] = error
+        return out
     #print >>sys.stderr, "DEBUG:response", response
     response_data = response.read()
     #print >>sys.stderr, "DEBUG:Caps-end", response_data[-1000:]
     try:
         wms = WebMapService('url', version=VERSION, xml=response_data)
-    except ServiceException, error:
+    except ServiceException as error:
         out['error'] = error or 'Unable to connect to Web Map Service'
-        return HttpResponse(
-            json.dumps(out),
-            mimetype='application/json',
-            status=str(error.code))
+        out['status'] = error
+        return out
     #print >>sys.stderr, "DEBUG:wms.contents:", list(wms.contents)
 
     #for layer in wms.contents:
     #    print >>sys.stderr, "DEBUG:layer:", layer
     layers = [wms[layer].name for layer in wms.contents]
-    #print >>sys.stderr, "layers:", layers
+    #print >>sys.stderr, "DEBUG:layers:", layers
     for layer in layers:
         #print >>sys.stderr, "DEBUG:layer:keywords", layer, ':', wms[layer].keywords
-        if LAYER_KEYWORD in layer or LAYER_KEYWORD in wms[layer].keywords:
+        if layer_type in layer or LAYER_KEYWORD in wms[layer].keywords:
             out['layer_name'] = layer
             #print >>sys.stderr, "DEBUG:layer_dict", wms[layer].__dict__
             #print >>sys.stderr, "DEBUG:layer_dict id",  wms[layer].__dict__.get('id'), wms[layer].__dict__.get('timepositions')
@@ -580,38 +638,43 @@ def wms_map_layer(request, key, layer_type):
                 time_list = wms[layer].timepositions
             except:
                 time_list = []
+            # TODO - refactor and use _check_dates
             if (date_start or date_end) and time_list:
-                if not date_start:
-                    date_start = time_list[0]
-                if not date_end:
-                    date_end = time_list[-1]
+                _time_list = []
                 try:
-                    _time_list = []
-                    _date_start = datetime.datetime.strptime(
-                        date_start, LAYER_DATE_FORMAT)
-                    _date_end = datetime.datetime.strptime(
-                        date_end, LAYER_DATE_FORMAT)
+                    if not date_start:
+                        date_start = time_list[0]
+                        _date_start = datetime.datetime.strptime(
+                            date_start, LAYER_DATE_FORMAT)
+                    else:
+                        _date_start = datetime.datetime.strptime(
+                            date_start, UI_DATE_FORMAT)
+                    if not date_end:
+                        date_end = time_list[-1]
+                        _date_end = datetime.datetime.strptime(
+                            date_end, LAYER_DATE_FORMAT)
+                    else:
+                        _date_end = datetime.datetime.strptime(
+                            date_end, UI_DATE_FORMAT)
                     _date_times = [
                         datetime.datetime.strptime(s, LAYER_DATE_FORMAT) \
                             for s in time_list]
-                    for _date in _date_times:
-                        if _date <= _date_end and _date >= _date_start:
-                            _d = _date.strftime("%Y-%m-%dT%H:%M:%S.%f")
-                            _time_list.append("%sZ" % _d[:-3])  # round to 3 dec
-                    time_list = _time_list
-                except:
-                    pass
+                except ValueError, e:
+                    _date_times = []
+                    print >>sys.stderr, "Unable to parse dates: %s" % e
+                    out['error'] = "Unable to parse dates: %s" % e
+                for _date in _date_times:
+                    if _date <= _date_end and _date >= _date_start:
+                        _d = _date.strftime("%Y-%m-%dT%H:%M:%S.%f")
+                        _time_list.append("%sZ" % _d[:-3])  # round to 3 dec
+                time_list = _time_list
             out['date_indices'] = time_list
     # results
-    status_code = 200
-    return HttpResponse(
-            json.dumps(out),
-            mimetype='application/json',
-            status=status_code)
+    return out
 
 
 @ajax_login_required
-def displacement_features(request):
+def displacement_features_OLD(request):
     """Return JSON-formatted metadata for the WFS data for a layer(s);
 
     The FEATURES_KEYWORD is used to filter for the correct layer(s); it can be
@@ -645,8 +708,9 @@ def displacement_features(request):
         status=400)
     # if user specified as request parameter, then process via capabilities file
     if user:
-        get_group_layers(request, out, user_groups, 'displacement',
-                        date_start, date_end)
+        get_group_layers(request, out, user_groups, 'features',
+                         date_start, date_end)
+        return out
 
     wfs_request = urllib2.Request(get_capabilities_url)
     wfs_request.add_header('sessionid', session_key)
@@ -664,7 +728,7 @@ def displacement_features(request):
     data = response.read()
     try:
         wfs = WebFeatureService('url', version=VERSION, xml=data)
-    except ServiceException, error:
+    except ServiceException as error:
         out['error'] = error or 'Unable to connect to Web Feature Service'
         return HttpResponse(
             json.dumps(out),
@@ -678,7 +742,7 @@ def displacement_features(request):
         keywords_list = [key.strip() for key in _keywords_list]
         #print >>sys.stderr, "DEBUG:wfs keywords list", keywords_list
         if FEATURES_KEYWORD in layer or FEATURES_KEYWORD in keywords_list:
-            out['layer_name'] = layer
+            out['features'] = layer
     # results
     status_code = 200
     return HttpResponse(
