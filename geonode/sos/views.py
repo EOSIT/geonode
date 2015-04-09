@@ -22,6 +22,7 @@ import os
 import datetime
 import json
 import urllib2
+import sys
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
@@ -85,7 +86,8 @@ def sos_layer_data(request, layername):
     else:
         time = None
     keys = [lkw.name for lkw in layer.keywords.all()]
-    sup_info = str(layer.supplemental_information) 
+    sup_info = str(layer.supplemental_information)
+    #print >>sys.stderr, "SOS DATA:", keys, sup_info
     if "sos" in keys or "SOS" in keys:
         return extract_sos_data(feature, sup_info, 
                                 data_format=data_format, time=time)

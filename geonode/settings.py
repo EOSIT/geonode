@@ -248,6 +248,7 @@ GEONODE_APPS = (
     'geonode.services',
 
     # GeoNode Contrib Apps
+    'geonode.sos',
 
     # 'geonode.contrib.dynamic',
 

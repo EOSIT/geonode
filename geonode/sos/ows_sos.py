@@ -21,6 +21,7 @@
 import logging
 from lxml import etree
 import urllib
+import sys
 
 from django.utils.translation import ugettext_lazy as _
 from geonode import GeoNodeException
@@ -47,6 +48,7 @@ def sos_swe_data_list(response, constants=[], show_headers=True):
     """
     result = []
     headers = []
+    #print >>sys.stderr, "XML:\n", response
     _tree = etree.fromstring(response)
     data = _tree.findall(
         nspath_eval('om:member/om:Observation/om:result/swe:DataArray', 

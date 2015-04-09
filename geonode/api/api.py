@@ -145,7 +145,7 @@ class GroupResource(ModelResource):
     class Meta:
         queryset = GroupProfile.objects.all()
         resource_name = 'groups'
-        allowed_methods = ['get']
+        allowed_methods = ['get', 'post']
         filtering = {
             'name': ALL
         }

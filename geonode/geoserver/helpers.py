@@ -415,6 +415,20 @@ def gs_slurp(
         the_store = resource.store
         workspace = the_store.workspace
         try:
+            defaults={
+                "workspace": workspace.name,
+                "store": the_store.name,
+                "storeType": the_store.resource_type,
+                "typename": "%s:%s" % (workspace.name.encode('utf-8'), resource.name.encode('utf-8')),
+                "title": resource.title or 'No title provided',
+                "abstract": resource.abstract or 'No abstract provided',
+                "owner": owner,
+                "uuid": str(uuid.uuid4()),
+                "bbox_x0": Decimal(resource.latlon_bbox[0]),
+                "bbox_x1": Decimal(resource.latlon_bbox[1]),
+                "bbox_y0": Decimal(resource.latlon_bbox[2]),
+                "bbox_y1": Decimal(resource.latlon_bbox[3])
+            }
             layer, created = Layer.objects.get_or_create(name=name, defaults={
                 "workspace": workspace.name,
                 "store": the_store.name,
@@ -441,6 +455,7 @@ def gs_slurp(
                 if verbosity > 0:
                     msg = "Stopping process because --ignore-errors was not set and an error was found."
                     print >> sys.stderr, msg
+                    print >> sys.stderr, defaults
                 raise Exception(
                     'Failed to process %s' %
                     resource.name.encode('utf-8'), e), None, sys.exc_info()[2]
