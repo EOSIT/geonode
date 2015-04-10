@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 def sos_cf_observation(response):
-    """Return data from a SOS GetObservation XML as a CF_SimpleObservation 
+    """Return data from a SOS GetObservation XML as a CF_SimpleObservation
     record (JSON).
 
     Example
@@ -49,7 +49,7 @@ def sos_cf_observation(response):
         "phenomenonTime":"2010-11-12T13:45:00Z",
         "procedure":{"id":"WS:123:123", "type":"Sensor"},
         "featureOfInterest":{
-		        "type":"Feature", 
+		        "type":"Feature",
 		        "geometry":null,
 		        "properties":{"id":"43:CSIR:PRETORIA"}
 	        },
@@ -67,7 +67,7 @@ def sos_cf_observation(response):
 		        "power_load":[23.0,23.1,23.0]
 	        }
         }
-    }    
+    }
     """
     def remove_attr_namespace(elem):
         """Remove attribute namespace from element."""
@@ -84,7 +84,7 @@ def sos_cf_observation(response):
         elem.attrib.update(to_set)
         return elem
 
-    def get_uom(elem):    
+    def get_uom(elem):
         _uom = elem.find(nspath_eval('swe:uom', namespaces))
         if _uom is not None:
             _uom = remove_attr_namespace(_uom)
@@ -92,6 +92,12 @@ def sos_cf_observation(response):
         else:
             return ''
 
+    # check response
+    results = []
+    try:
+        _tree = etree.fromstring(response)
+    except ValueError:
+        return results
     # process XML response to extract data
     foi_id, proc_id, obs_id, length = None, None, None, 0
     variables, data = {}, {}
@@ -112,7 +118,7 @@ def sos_cf_observation(response):
         proc_id = _proc.attrib['href']
     # observed data
     data = _tree.findall(
-        nspath_eval('om:member/om:Observation/om:result/swe:DataArray', 
+        nspath_eval('om:member/om:Observation/om:result/swe:DataArray',
         namespaces))
     for datum in data:
         # size of data
@@ -139,8 +145,8 @@ def sos_cf_observation(response):
         # data for each variable
         encoding = datum.find(
             nspath_eval('swe:encoding/swe:TextBlock', namespaces))
-        separators = (encoding.attrib['decimalSeparator'], 
-                      encoding.attrib['tokenSeparator'], 
+        separators = (encoding.attrib['decimalSeparator'],
+                      encoding.attrib['tokenSeparator'],
                       encoding.attrib['blockSeparator'])
         values = datum.find(nspath_eval('swe:values', namespaces))
         lines = values.text.split(separators[2]) # list of lines
@@ -170,12 +176,14 @@ def sos_cf_observation(response):
         "variables": variables,
         "data": data
     }
-    return result
+    results.append(result)
+
+    return results
 
 
 def sos_swe_data_list(response, constants=[], show_headers=True):
     """Return data values from SOS XML <swe:value> tag as a list of lists.
-    
+
     Parameters
     ----------
     constants : list
@@ -191,14 +199,14 @@ def sos_swe_data_list(response, constants=[], show_headers=True):
     except ValueError:
         return result
     data = _tree.findall(
-        nspath_eval('om:member/om:Observation/om:result/swe:DataArray', 
+        nspath_eval('om:member/om:Observation/om:result/swe:DataArray',
         namespaces))
     for datum in data:
         encoding = datum.find(
             nspath_eval('swe:encoding/swe:TextBlock', namespaces))
-        separators = (encoding.attrib['decimalSeparator'], 
-                      encoding.attrib['tokenSeparator'], 
-                      encoding.attrib['blockSeparator']) 
+        separators = (encoding.attrib['decimalSeparator'],
+                      encoding.attrib['tokenSeparator'],
+                      encoding.attrib['blockSeparator'])
 
         if show_headers and not headers:  # only for first dataset
             fields = datum.findall(
@@ -219,8 +227,8 @@ def sos_swe_data_list(response, constants=[], show_headers=True):
     return result
 
 
-def sos_observation_xml(url, version='1.0.0', xml=None, offerings=[], 
-                        responseFormat=None, observedProperties=[], 
+def sos_observation_xml(url, version='1.0.0', xml=None, offerings=[],
+                        responseFormat=None, observedProperties=[],
                         eventTime=None, feature=None, allProperties=False):
     """Return the XML from a SOS GetObservation request.
 
@@ -233,13 +241,13 @@ def sos_observation_xml(url, version='1.0.0', xml=None, offerings=[],
     offerings : list
         selected offerings from SOS; defaults to all available
     responseFormat : string
-        desire format for result data 
+        desire format for result data
     observedProperties : list
         filters results for selected properties from SOS; defaults to first one
         (unless allProperties is True)
     eventTime : string
         filters results for a specified instant or period.
-        Use ISO format YYYY-MM-DDTHH:mm:ss+-HH  Periods of time (start and end) 
+        Use ISO format YYYY-MM-DDTHH:mm:ss+-HH  Periods of time (start and end)
         are separated by "/"; e.g. 2015-01-02T08:00:00+02/2015-01-02T11:00:00+02
     feature : string
         filters results for the ID of a procedure/feature_of_interest
@@ -248,7 +256,7 @@ def sos_observation_xml(url, version='1.0.0', xml=None, offerings=[],
         ignores any items in the observedProperties)
     """
     # GetCapabilites of SOS
-    _sos = SensorObservationService(url, version=version or '1.0.0', xml=xml or None) 
+    _sos = SensorObservationService(url, version=version or '1.0.0', xml=xml or None)
     # process any supplied offerings
     if offerings:
         for off in _sos.offerings:  # look for matching IDs

@@ -29,7 +29,7 @@ from django.http import HttpResponse
 
 from geonode.layers.views import _resolve_layer, _PERMISSION_MSG_VIEW
 
-from ows_sos import sos_swe_data_list, sos_observation_xml
+from ows_sos import sos_swe_data_list, sos_observation_xml, sos_cf_observation
 
 
 def ajax_login_required(f):
@@ -55,23 +55,23 @@ def sos_layer_metadata(request, layername):
     return HttpResponse(
         json.dumps(out),
         mimetype='application/json',
-        status=404) 
+        status=404)
 
 
 @ajax_login_required
 def sos_layer_data(request, layername):
     """Return SOS data for a layer specified by name.
 
-    Access to the layer keywords is needed to determine the additional 
+    Access to the layer keywords is needed to determine the additional
     characteristics of a layer.
- 
-    Access to the layer's supplemental information at this level must be 
+
+    Access to the layer's supplemental information at this level must be
     parsed for appropriate function.
     """
     out = {}
-    layer = _resolve_layer(request, 
-                           layername, 
-                           'layers.view_layer', 
+    layer = _resolve_layer(request,
+                           layername,
+                           'layers.view_layer',
                            _PERMISSION_MSG_VIEW)
     if 'feature' in request.GET:
         feature = request.GET['feature']
@@ -89,7 +89,7 @@ def sos_layer_data(request, layername):
     sup_info = str(layer.supplemental_information)
     #print >>sys.stderr, "SOS DATA:", keys, sup_info
     if "sos" in keys or "SOS" in keys:
-        return extract_sos_data(feature, sup_info, 
+        return extract_sos_data(feature, sup_info,
                                 data_format=data_format, time=time)
     else:
         return HttpResponse(
@@ -100,7 +100,7 @@ def sos_layer_data(request, layername):
 
 def extract_sos_data(feature, supplementary_info, data_format='json', time=None):
     """Return SOS data in data format for a layer specifying a valid SOS URL.
-    
+
     Parameters
     ----------
     feature : string
@@ -108,8 +108,8 @@ def extract_sos_data(feature, supplementary_info, data_format='json', time=None)
         corresponding "feature_of_interest" in the SOS
     supplementary_info : dictionary
         a set of parameters used to access a SOS.  For example:
-            {"sos_url": "http://sos.server.com:8080/sos", 
-             "observedProperties": ["urn:ogc:def:phenomenon:OGC:1.0.30:temperature"], 
+            {"sos_url": "http://sos.server.com:8080/sos",
+             "observedProperties": ["urn:ogc:def:phenomenon:OGC:1.0.30:temperature"],
              "offerings": ["WEATHER"]}
     data_format: string
         a value in the set [csv|json]; defaults to json
@@ -125,10 +125,10 @@ def extract_sos_data(feature, supplementary_info, data_format='json', time=None)
     observedProperties = sup_info.get('observedProperties', '')
     time = time
     XML = sos_observation_xml(
-        url, offerings=offerings, observedProperties=observedProperties, 
+        url, offerings=offerings, observedProperties=observedProperties,
         allProperties=False, feature=feature, eventTime=time)
-    lists = sos_swe_data_list(XML)
     if data_format ==  'csv':
+        lists = sos_swe_data_list(XML)
         sos_data = HttpResponse(mimetype='text/csv')
         sos_data['Content-Disposition'] = 'attachment;filename=sos.csv'
         writer = csv.writer(sos_data)
@@ -137,10 +137,11 @@ def extract_sos_data(feature, supplementary_info, data_format='json', time=None)
         writer.writerows(lists)
         return sos_data
     else:  # json is default
+        data = sos_cf_observation(XML)
         service_result = {'format': {},
-                          'data': lists,
+                          'data': data,
                           'style': {}}
         return HttpResponse(
-            json.dumps(service_result), 
+            json.dumps(service_result),
             mimetype="application/json",
             status=200)
