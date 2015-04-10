@@ -48,8 +48,11 @@ def sos_swe_data_list(response, constants=[], show_headers=True):
     """
     result = []
     headers = []
-    #print >>sys.stderr, "XML:\n", response
-    _tree = etree.fromstring(response)
+    print >>sys.stderr, "XML:\n", response
+    try:
+        _tree = etree.fromstring(response)
+    except ValueError:
+        return result
     data = _tree.findall(
         nspath_eval('om:member/om:Observation/om:result/swe:DataArray', 
         namespaces))
@@ -100,9 +103,9 @@ def sos_observation_xml(url, version='1.0.0', xml=None, offerings=[],
     eventTime : string
         filters results for a specified instant or period.
         Use ISO format YYYY-MM-DDTHH:mm:ss+-HH  Periods of time (start and end) 
-        are separated by "/"; e.g. 2009-06-26T10:00:00+01/2009-06-26T11:00:00+01
+        are separated by "/"; e.g. 2015-01-02T08:00:00+02/2015-01-02T11:00:00+02
     feature : string
-        filters results for the ID of a feature_of_interest
+        filters results for the ID of a procedure/feature_of_interest
     allProperties : boolean
         if allProperties is True, filters results for all properties (and
         ignores any items in the observedProperties)
@@ -129,8 +132,9 @@ def sos_observation_xml(url, version='1.0.0', xml=None, offerings=[],
         return _sos.get_observation(
             offerings=sos_offerings, responseFormat=responseFormat,
             observedProperties=observedProperties, eventTime=eventTime,
-            FEATUREOFINTEREST=feature)
+            procedure=feature)
     else:
         return _sos.get_observation(
             offerings=sos_offerings, responseFormat=responseFormat,
             observedProperties=observedProperties, eventTime=eventTime)
+
