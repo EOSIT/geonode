@@ -38,20 +38,20 @@ logger = logging.getLogger(__name__)
 
 
 def sos_cf_observation(response):
-    """Return data from a SOS GetObservation XML as a CF_SimpleObservation
-    record (JSON).
+    """Return data from a SOS GetObservation XML as a list of
+    CF_SimpleObservation records (JSON).
 
     Example
     =======
-    {
+    [{
         "type":"CF_SimpleObservation",
         "parameter":{"id":"ed221bf0-d075-012d-287e-34159e211071"},
         "phenomenonTime":"2010-11-12T13:45:00Z",
-        "procedure":{"id":"WS:123:123", "type":"Sensor"},
+        "procedure":{"id":"WS:123:123", "type":"sensor"},
         "featureOfInterest":{
-		        "type":"Feature",
+		        "type":"powerMeter",
 		        "geometry":null,
-		        "properties":{"id":"43:CSIR:PRETORIA"}
+		        "properties":{"id":"PRETORIA:CSIR:43"}
 	        },
         "observedProperty":{"type":"TimeSeries"},
         "result":{
@@ -67,7 +67,7 @@ def sos_cf_observation(response):
 		        "power_load":[23.0,23.1,23.0]
 	        }
         }
-    }
+    }]
     """
     def remove_attr_namespace(elem):
         """Remove attribute namespace from element."""
@@ -98,87 +98,102 @@ def sos_cf_observation(response):
         _tree = etree.fromstring(response)
     except ValueError:
         return results
-    # process XML response to extract data
-    foi_id, proc_id, obs_id, length = None, None, None, 0
-    variables, data = {}, {}
-    # observation
-    obs = _tree.findall(nspath_eval('om:member/om:Observation', namespaces))
-    if obs and len(obs) > 0:
-        _obs = remove_attr_namespace(obs[0])
-        obs_id = _obs.attrib['id']
-    # feature-of-interest
-    foi = _tree.findall(nspath_eval('om:member/om:Observation/om:featureOfInterest', namespaces))
-    if foi and len(foi) > 0:
-        _foi = remove_attr(foi[0])
-        foi_id = _foi.attrib['title']
-    # procedure/sensor
-    proc = _tree.findall(nspath_eval('om:member/om:Observation/om:procedure', namespaces))
-    if proc and len(proc) > 0:
-        _proc = remove_attr_namespace(proc[0])
-        proc_id = _proc.attrib['href']
-    # observed data
-    data = _tree.findall(
-        nspath_eval('om:member/om:Observation/om:result/swe:DataArray',
-        namespaces))
-    for datum in data:
-        # size of data
-        _length = datum.find(nspath_eval('swe:elementCount/swe:Count/swe:value', namespaces))
-        if _length is not None:
-            length = _length.txt
-        # fields (variables)
-        fieldnames = []
-        fields = datum.findall(
-            nspath_eval('swe:elementType/swe:DataRecord/swe:field', namespaces))
-        for field in fields:
-            fieldname = field.attrib['name']
-            _time = field.find(nspath_eval('swe:Time', namespaces))
-            if _time is not None:
-                # TODO validate that time is in ISO time format (ISO 8601)
-                variables["time"] = {"dimensions": ["time"], "units": "isoTime"}
-                data["time"] = []
-                fieldnames.append("time")
-            else:
-                _var = field.find(nspath_eval('swe:Text', namespaces))
-                variables[fieldname] = {"dimensions": ["time"], "units": get_uom(_var)}
-                data[fieldname] = []
-                fieldnames.append(fieldname)
-        # data for each variable
-        encoding = datum.find(
-            nspath_eval('swe:encoding/swe:TextBlock', namespaces))
-        separators = (encoding.attrib['decimalSeparator'],
-                      encoding.attrib['tokenSeparator'],
-                      encoding.attrib['blockSeparator'])
-        values = datum.find(nspath_eval('swe:values', namespaces))
-        lines = values.text.split(separators[2]) # list of lines
-        for line in lines:
-            items = line.split(separators[1])  # list of items in single line
-            for key, item in enumerate(items):
-                if item:
-                    data[fieldnames[key]].append(item)
-    # save results in dictionary
-    result = {}
-    result['type'] = "CF_SimpleObservation"
-    result['parameter'] = {"id": obs_id}  #str( uuid.uuid4())
-    result['procedure'] =  {
-        "id": proc_id,
-        "type": "Sensor"
-    }
-    result['phenomenonTime'] = data["time"][-1]  # last datetime value
-    result['featureOfInterest'] = {
-        "type": "Feature",
-        # TODO check if geometry is required
-        "geometry": None,
-        "properties": {"id": foi_id}
-    }
-    result['observedProperty'] = {"type": "TimeSeries"}
-    result['result'] = {
-        "dimensions": {"time": length}, # length of data array  #len(data["time"])
-        "variables": variables,
-        "data": data
-    }
-    results.append(result)
+    # owslib does not have this @2015-04-13
+    if not namespaces.get("sa"):
+        namespaces["sa"] = "http://www.opengis.net/sampling/1.0"
+
+    collection = _tree.findall(nspath_eval('om:member',namespaces))
+    for m_tree in collection:
+        # process XML response to extract data for single sensor
+        foi_id, proc_id, obs_id, length, loc_wkt = None, None, None, 0, ''
+        variables, data = {}, {}
+        # observation
+        obs = m_tree.findall(nspath_eval('om:Observation', namespaces))
+        if obs and len(obs) > 0:
+            _obs = remove_attr_namespace(obs[0])
+            obs_id = _obs.attrib['id']
+        # feature-of-interest
+        foi = m_tree.findall(nspath_eval('om:Observation/om:featureOfInterest', namespaces))
+        if foi and len(foi) > 0:
+            _foi = remove_attr_namespace(foi[0])
+            foi_id = _foi.attrib['title']
+        # location for a Point
+        loc = m_tree.find(nspath_eval(
+            'om:Observation/om:featureOfInterest/sa:SamplingPoint/sa:position/gml:Point/gml:pos', namespaces))
+        if loc is not None:
+            loc_wkt = loc.text
+        # procedure/sensor
+        proc = m_tree.findall(nspath_eval('om:Observation/om:procedure', namespaces))
+        if proc and len(proc) > 0:
+            _proc = remove_attr_namespace(proc[0])
+            proc_id = _proc.attrib['href']
+        # observed data
+        data = {}
+        data["time"] = []
+        data_array = m_tree.findall(
+            nspath_eval('om:Observation/om:result/swe:DataArray',
+            namespaces))
+        for datum in data_array:
+            # size of data
+            _length = datum.find(nspath_eval('swe:elementCount/swe:Count/swe:value', namespaces))
+            if _length is not None:
+                length = _length.text
+            # fields (variables)
+            fieldnames = []
+            fields = datum.findall(
+                nspath_eval('swe:elementType/swe:DataRecord/swe:field', namespaces))
+            for field in fields:
+                fieldname = field.attrib['name']
+                _time = field.find(nspath_eval('swe:Time', namespaces))
+                if _time is not None:
+                    # TODO validate that time is in ISO time format (ISO 8601)
+                    variables["time"] = {"dimensions": ["time"], "units": "isoTime"}
+                    data["time"] = []
+                    fieldnames.append("time")
+                else:
+                    _var = field.find(nspath_eval('swe:Text', namespaces))
+                    variables[fieldname] = {"dimensions": ["time"], "units": get_uom(_var)}
+                    data[fieldname] = []
+                    fieldnames.append(fieldname)
+            # data for each variable
+            encoding = datum.find(
+                nspath_eval('swe:encoding/swe:TextBlock', namespaces))
+            separators = (encoding.attrib['decimalSeparator'],
+                          encoding.attrib['tokenSeparator'],
+                          encoding.attrib['blockSeparator'])
+            values = datum.find(nspath_eval('swe:values', namespaces))
+            lines = values.text.split(separators[2]) # list of lines
+            for line in lines:
+                items = line.split(separators[1])  # list of items in single line
+                for key, item in enumerate(items):
+                    if item:
+                        data[fieldnames[key]].append(item)
+        # save results in dictionary
+        result = {}
+        result['type'] = "CF_SimpleObservation"
+        result['parameter'] = {"id": obs_id}  #str( uuid.uuid4())
+        result['procedure'] =  {
+            "id": proc_id,
+            "type": "sensor"
+        }
+        if data["time"]:
+            result['phenomenonTime'] = data["time"][-1]  # last datetime value
+        result['featureOfInterest'] = {
+            "type": "Feature",
+            # TODO check if geometry is required
+            "geometry": loc_wkt,
+            "properties": {"id": foi_id}
+        }
+        result['observedProperty'] = {"type": "TimeSeries"}
+        result['result'] = {
+            "dimensions": {"time": length}, # length of data array  #len(data["time"])
+            "variables": variables,
+            "data": data
+        }
+        results.append(result)
 
     return results
+
 
 
 def sos_swe_data_list(response, constants=[], show_headers=True):
@@ -193,7 +208,7 @@ def sos_swe_data_list(response, constants=[], show_headers=True):
     """
     result = []
     headers = []
-    print >>sys.stderr, "XML:\n", response
+    #print >>sys.stderr, "XML:\n", response
     try:
         _tree = etree.fromstring(response)
     except ValueError:
